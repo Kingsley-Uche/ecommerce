@@ -47,16 +47,16 @@ jobs:
       - name: Verify build output
         run: ls -la public/build
 
-     # Upload Vite build assets cleanly
+      # Upload Vite build assets cleanly
       - name: Upload Vite build
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "public/build/"               # <-- Note the trailing slash, NO wildcard (*)
-          strip_components: 1                   # <-- This strips off the "public/" prefix
-          target: "${{ secrets.DEPLOY_PATH }}/ecommerce/public" # <-- Point directly to the parent public folder
+          source: "public/build/"
+          strip_components: 1
+          target: "${{ secrets.DEPLOY_PATH }}/ecommerce/public"
 
       # Deploy application and sync to web directory
       - name: Deploy Laravel
@@ -65,11 +65,10 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-         script: |
+          script: |
             cd ${{ secrets.DEPLOY_PATH }}/ecommerce
 
             echo "Wiping untracked files but keeping live .env safe..."
-            # Adding -e .env protects your live production configuration file!
             git clean -fd -e .env
 
             echo "Updating repository to match GitHub exactly..."
