@@ -47,33 +47,41 @@ jobs:
       - name: Verify build output
         run: ls -la public/build
 
-      # Upload build assets
+     # Upload Vite build assets cleanly
       - name: Upload Vite build
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "public/build/*"
-          target: "${{ secrets.DEPLOY_PATH }}/ecommerce/public/build"
+          source: "public/build/"               # <-- Note the trailing slash, NO wildcard (*)
+          strip_components: 1                   # <-- This strips off the "public/" prefix
+          target: "${{ secrets.DEPLOY_PATH }}/ecommerce/public" # <-- Point directly to the parent public folder
 
-      # Deploy application
+      # Deploy application and sync to web directory
       - name: Deploy Laravel
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          #port: ${{ secrets.SSH_PORT }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH }}
+            cd ${{ secrets.DEPLOY_PATH }}/ecommerce
 
-            echo "Updating repository..."
+            echo "Wiping untracked files and cleaning workspace..."
+            # -f forces the delete, -d removes whole untracked directories
+            git clean -fd
+
+            echo "Updating repository to match GitHub exactly..."
             git fetch origin main
             git reset --hard origin/main
 
             echo "Installing Composer packages..."
             composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+
+            echo "Syncing frontend assets to public web root..."
+            # This cleanly copies the fresh build folder to your live cPanel web root
+            cp -rT public/build /home/${{ secrets.SERVER_USER }}/public_html/build
 
             echo "Optimizing Laravel..."
             php artisan optimize:clear
