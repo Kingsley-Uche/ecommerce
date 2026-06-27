@@ -1,0 +1,88 @@
+name: Laravel Build & Deploy to cPanel
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Setup PHP
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, xml, bcmath, fileinfo
+
+      # Install Composer dependencies
+      - name: Install Composer dependencies
+        run: composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+
+      # Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Install Node dependencies
+      - name: Install NPM dependencies
+        run: npm ci
+
+      # Build assets
+      - name: Build frontend assets
+        run: npm run build
+
+      # Verify build
+      - name: Verify build output
+        run: ls -la public/build
+
+      # Upload build assets
+      - name: Upload Vite build
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "public/build/*"
+          target: "${{ secrets.DEPLOY_PATH }}/public/build"
+
+      # Deploy application
+      - name: Deploy Laravel
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+
+            echo "Updating repository..."
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "Installing Composer packages..."
+            composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+
+            echo "Optimizing Laravel..."
+            php artisan optimize:clear
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+
+            chmod -R 775 storage bootstrap/cache
+
+            echo "Deployment completed successfully."
