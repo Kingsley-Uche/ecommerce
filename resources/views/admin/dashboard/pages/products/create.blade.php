@@ -8,7 +8,7 @@
             <h4 class="mb-sm-0">Create Product</h4>
             <div class="page-title-right">
                 <ol class="breadcrumb m-0">
-                    <li class="breadcrumb-item"><a href="javascript:void(0);">Products</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('admin.product.index') }}">Products</a></li>
                     <li class="breadcrumb-item active">Create</li>
                 </ol>
             </div>
@@ -24,115 +24,219 @@
             <h4 class="card-title">Create Product</h4>
             <p class="card-title-desc">Fill the form to create a product.</p>
 
-            <form action="{{ route('admin.product.store') }}" method="POST" enctype="multipart/form-data">
-                @csrf
+        <form action="{{ route('admin.product.store') }}" method="POST" enctype="multipart/form-data">
+    @csrf
 
-                <div class="row">
+    <div id="product-wrapper">
 
-                    <div class="col-lg-6 col-12">
-                        <div class="mb-3">
-                            <label class="form-label">Product Name</label>
-                            <input class="form-control" type="text" name="name" value="{{ old('name') }}" placeholder="Enter Product Name">
-                            @error('name') <span class="text-danger">{{ $message }}</span> @enderror
-                        </div>
-                    </div>
+        {{-- First Product --}}
+        <div class="product-card card border mb-4">
+            <div class="card-body">
 
-                    <div class="col-lg-6 col-12">
-                        <div class="mb-3">
-                            <label class="form-label">Price</label>
-                            <input class="form-control" type="number" step="0.01" name="price"
-                                   value="{{ old('price') }}" placeholder="Product Price">
-                            @error('price') <span class="text-danger">{{ $message }}</span> @enderror
-                        </div>
-                    </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Product #1</h5>
 
-                    <div class="col-lg-6 col-12">
-                        <div class="mb-3">
-                            <label class="form-label">Category</label>
-                            <select class="form-control" name="category_id">
-                                <option value="">Select Category</option>
-                                @foreach($categories as $cat)
-                                    <option value="{{ $cat->id }}" {{ old('category_id') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('category_id') <span class="text-danger">{{ $message }}</span> @enderror
-                        </div>
-                    </div>
-                    <div class="col-lg-6 col-12">
-                        <div class="mb-3">
-                            <label class="form-label">Sales Category</label>
-                            <select class="form-control" name="sales_category_models_id">
-                                <option value="">Select Sales Category</option>
-                                @foreach($sales_category as $cat)
-                                    <option value="{{ $cat->id }}" {{ old('sales_category_models_id') == $cat->id ? 'selected' : '' }}>{{ $cat->category_name }}</option>
-                                @endforeach
-                            </select>
-                            @error('sales_category_id') <span class="text-danger">{{ $message }}</span> @enderror
-                        </div>
-                    </div>
-
-                    <div class="col-lg-6 col-12">
-                        <div class="mb-3">
-                            <label class="form-label">Available Stock</label>
-                            <input class="form-control" type="number" name="stock" value="{{ old('stock') }}" placeholder="Enter Stock Quantity">
-                            @error('stock') <span class="text-danger">{{ $message }}</span> @enderror
-                        </div>
-                    </div>
-
-                    {{-- Dynamic Image Inputs --}}
-                    <div class="col-lg-6 col-12">
-                        <label class="form-label">Product Images</label>
-
-                        <div id="image-wrapper">
-                            <div class="input-group mb-2">
-                                <input type="file" name="images[]" class="form-control" accept="image/*" required>
-                                <button type="button" class="btn btn-success add-image">+</button>
-                            </div>
-                        </div>
-
-                        @error('images') <span class="text-danger">{{ $message }}</span> @enderror
-                        @error('images.*') <span class="text-danger">{{ $message }}</span> @enderror
-                    </div>
-
-                    <div class="col-12">
-                        <div class="mb-3">
-                            <label class="form-label">Description</label>
-                            <textarea class="form-control" name="description" rows="4" placeholder="Product Description">{{ old('description') }}</textarea>
-                            @error('description') <span class="text-danger">{{ $message }}</span> @enderror
-                        </div>
-                    </div>
-
+                    <button type="button"
+                            class="btn btn-danger btn-sm remove-product"
+                            style="display:none;">
+                        Remove
+                    </button>
                 </div>
 
-                <button class="btn btn-primary" type="submit">Create Product</button>
+                @include('admin.dashboard.pages.products.partials.product-form', ['index' => 0])
 
-            </form>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="mb-3">
+        <button type="button" id="add-product" class="btn btn-success">
+            + Add Another Product
+        </button>
+
+        <button type="submit" class="btn btn-primary">
+            Save Products
+        </button>
+    </div>
+
+</form>
 
         </div>
     </div>
 </div>
 </div>
 
-{{-- Dynamic Image Script --}}
+
+
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const wrapper = document.getElementById('image-wrapper');
 
-    document.addEventListener('click', function (e) {
-        if (e.target.classList.contains('add-image')) {
-            let field = `
-                <div class="input-group mb-2">
-                    <input type="file" name="images[]" class="form-control" accept="image/*" required>
-                    <button type="button" class="btn btn-danger remove-image">−</button>
-                </div>`;
-            wrapper.insertAdjacentHTML('beforeend', field);
-        }
+document.addEventListener("DOMContentLoaded", function(){
 
-        if (e.target.classList.contains('remove-image')) {
-            e.target.closest('.input-group').remove();
-        }
+    let productIndex = 1;
+
+    const wrapper = document.getElementById('product-wrapper');
+
+    document.getElementById('add-product').addEventListener('click', function(){
+
+        let html = `
+<div class="product-card card border mb-4">
+
+<div class="card-body">
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+
+<h5>Product #${productIndex+1}</h5>
+
+<button
+type="button"
+class="btn btn-danger btn-sm remove-product">
+Remove
+</button>
+
+</div>
+
+<div class="row">
+
+<div class="col-lg-6">
+<div class="mb-3">
+<label>Name</label>
+<input class="form-control"
+name="products[${productIndex}][name]">
+</div>
+</div>
+
+<div class="col-lg-6">
+<div class="mb-3">
+<label>Price</label>
+<input class="form-control"
+type="number"
+step="0.01"
+name="products[${productIndex}][price]">
+</div>
+</div>
+
+<div class="col-lg-6">
+<div class="mb-3">
+<label>Categories</label>
+
+<select
+class="form-control"
+multiple
+name="products[${productIndex}][categories][]">
+
+@foreach($categories as $cat)
+
+<option value="{{ $cat->id }}">
+{{ $cat->name }}
+</option>
+
+@endforeach
+
+</select>
+
+</div>
+</div>
+
+<div class="col-lg-6">
+<div class="mb-3">
+<label>Stock</label>
+<input class="form-control"
+type="number"
+name="products[${productIndex}][stock]">
+</div>
+</div>
+
+<div class="col-12">
+<div class="mb-3">
+<label>Description</label>
+<textarea
+class="form-control"
+name="products[${productIndex}][description]"></textarea>
+</div>
+</div>
+
+<div class="col-12">
+
+<label>Images</label>
+
+<div class="image-wrapper">
+
+<div class="input-group mb-2">
+
+<input
+type="file"
+class="form-control"
+name="products[${productIndex}][images][]">
+
+<button
+type="button"
+class="btn btn-success add-image">
++
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+`;
+
+        wrapper.insertAdjacentHTML('beforeend', html);
+
+        productIndex++;
+
     });
+
+    document.addEventListener('click',function(e){
+
+        if(e.target.classList.contains('remove-product')){
+
+            e.target.closest('.product-card').remove();
+
+        }
+
+        if(e.target.classList.contains('add-image')){
+
+            const imageWrapper = e.target.closest('.image-wrapper');
+
+            const inputName = e.target.previousElementSibling.name;
+
+            imageWrapper.insertAdjacentHTML('beforeend',`
+                <div class="input-group mb-2">
+
+                    <input
+                        type="file"
+                        class="form-control"
+                        name="${inputName}">
+
+                    <button
+                        type="button"
+                        class="btn btn-danger remove-image">
+                        -
+                    </button>
+
+                </div>
+            `);
+
+        }
+
+        if(e.target.classList.contains('remove-image')){
+
+            e.target.closest('.input-group').remove();
+
+        }
+
+    });
+
 });
+
 </script>
 
 @endsection

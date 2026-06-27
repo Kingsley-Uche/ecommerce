@@ -16,20 +16,9 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->decimal('price', 10, 2);
-
-            // Correct foreign keys
-            $table->foreignId('category_id')
-                ->nullable()
-                ->constrained('product_category_models')
-                ->nullOnDelete();
-
-            $table->foreignId('sales_category_models_id')
-                ->nullable()
-                ->constrained('sales_category_models')
-                ->nullOnDelete();
+            $table->integer('num_sold');
 
             $table->integer('stock')->default(0);
-            $table->boolean('is_front_page')->default(false);
 
             $table->timestamps();
             $table->softDeletes();

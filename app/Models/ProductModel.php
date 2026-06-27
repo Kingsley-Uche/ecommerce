@@ -19,20 +19,31 @@ class ProductModel extends Model
         'description',
         'price',
         'category_id',
-        'sales_category_models_id',
+        'num_sold',
         'stock',
-        'is_front_page',
     ];
     
     protected $hidden = ['created_at', 'updated_at', 'deleted_at'];
 
     protected $dates = ['deleted_at'];
 
-    public function category()
-    {
-        return $this->belongsTo(ProductCategoryModel::class, 'category_id')
-            ->select('id', 'name', 'excerpt', 'description', 'status', 'priority', 'image_path');
-    }
+   public function categories()
+{
+    return $this->belongsToMany(
+        ProductCategoryModel::class,
+        'category_assigns',
+        'product_id',
+        'category_id'
+    )->select(
+        'product_category_models.id',
+        'product_category_models.name',
+        'product_category_models.excerpt',
+        'product_category_models.description',
+        'product_category_models.status',
+        'product_category_models.priority',
+        'product_category_models.image_path'
+    );
+}
     
     public function images()
     {

@@ -4,14 +4,16 @@
         <div class="row gy-4">
           <div class="col-lg-4 col-md-6">
             <div class="footer-widget footer-about">
+              @if($shop_data)
               <a href="index.html" class="logo">
                 <span class="sitename">{{$shop_data['shop_name']}}</span>
               </a>
               <p>{{$shop_data['tagline']}}</p>
-
+@endif
               <div class="social-links mt-4">
                 <h5>Connect With Us</h5>
                 <div class="social-icons">
+                  @if($shop_data)
                   @foreach($shop_data['social_links'] as $index =>$link)
                    <a href="{{$link}}" aria-label="Facebook">{{$shop_data['social_icons'][$index]}}</i></a>
 
@@ -22,6 +24,7 @@
                   <a href="#" aria-label="TikTok"><i class="bi bi-tiktok"></i></a>
                   <a href="#" aria-label="Pinterest"><i class="bi bi-pinterest"></i></a>
                   <a href="#" aria-label="YouTube"><i class="bi bi-youtube"></i></a> -->
+                  @endif
                 </div>
               </div>
             </div>
@@ -58,6 +61,7 @@
           <div class="col-lg-4 col-md-6">
             <div class="footer-widget">
               <h4>Contact Information</h4>
+              @if($shop_data)
               <div class="footer-contact">
                 <div class="contact-item">
                   <i class="bi bi-geo-alt"></i>
@@ -75,6 +79,7 @@
                   <i class="bi bi-clock"></i>
                   <span>Monday-Friday: 9am-6pm<br>Saturday: 10am-4pm<br>Sunday: Closed</span>
                 </div>
+                @endif
               </div>
 
               <div class="app-buttons mt-4">
@@ -97,9 +102,11 @@
       <div class="container">
         <div class="row gy-3 align-items-center">
           <div class="col-lg-6 col-md-12">
+            @if($shop_data)
             <div class="copyright">
               <p>© <span>Copyright</span> <strong class="sitename">{{$shop_data['shop_name']}}</strong>. All Rights Reserved.</p>
             </div>
+            @endif
             <div class="credits mt-1">
               <!-- All the links in the footer should remain intact. -->
               <!-- You can delete the links only if you've purchased the pro version. -->

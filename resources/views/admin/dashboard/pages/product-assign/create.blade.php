@@ -21,7 +21,7 @@
         <div class="card">
             <div class="card-body">
 
-                <h4 class="card-title">Assign Products to categories</h4>
+                <h4 class="card-title">Create Product Category</h4>
                 <p class="card-title-desc">Fill the form to create a new product category.</p>
 
                 <form action="{{ route('admin.product-category.store') }}" method="POST" enctype="multipart/form-data">

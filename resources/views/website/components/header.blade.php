@@ -7,7 +7,9 @@
             <div class="top-bar-item">
               <i class="bi bi-telephone-fill me-2"></i>
               <span>Need help? Call us: </span>
+              @if($shop_data)
               <a href="{{'tel:'.$shop_data['store_phone']}}">{{$shop_data['phone']}}</a>
+              @endif
             </div>
           </div>
           <div class="col-lg-4 col-md-12 text-center">
@@ -46,10 +48,12 @@
       <div class="container-fluid container-xl">
         <div class="d-flex py-3 align-items-center justify-content-between">
           <!-- Logo -->
+           @if($shop_data)
           <a href="{{route('home')}}" class="logo d-flex align-items-center">
             <h1 class="sitename">{{$shop_data['store_name']}}</h1>
           </a>
           <!-- Search -->
+           @endif
 
           <form class="search-form desktop-search-form">
             <div class="input-group">
@@ -70,11 +74,13 @@
               <button class="header-action-btn" data-bs-toggle="dropdown">
                 <i class="bi bi-person"></i>
               </button>
+              @if($shop_data)
               <div class="dropdown-menu">
                 <div class="dropdown-header">
                   <h6>Welcome to <span class="sitename">{{$shop_data['store_name']}}</span></h6>
                   <p class="mb-0">Access account &amp; manage orders</p>
                 </div>
+                @endif
                 <div class="dropdown-body">
                   <a class="dropdown-item d-flex align-items-center" href="account.html">
                     <i class="bi bi-person-circle me-2"></i>

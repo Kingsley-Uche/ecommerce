@@ -52,33 +52,49 @@
 
         {{-- CATEGORY --}}
         <div class="col-lg-6 col-12">
-            <div class="mb-3">
-                <label class="form-label">Category</label>
-                <select class="form-control" name="category_id">
-                    <option value="">Select Category</option>
-                    @foreach($categories as $cat)
-                        <option value="{{ $cat->id }}"
-                            {{ old('category_id', $product->category->id ?? $product->category_id) == $cat->id ? 'selected' : '' }}>
-                            {{ $cat->name }}
-                        </option>
-                    @endforeach
-                </select>
-                @error('category_id') <span class="text-danger">{{ $message }}</span> @enderror
-            </div>
+            @php
+    $selectedCategories = old(
+        'category_id',
+        $product->categories->pluck('id')->toArray()
+    );
+@endphp
+
+<div class="mb-3">
+    <label class="form-label">
+        Categories
+    </label>
+
+    <select
+        class="form-select"
+        multiple
+        name="category_id[]">
+
+        @foreach($categories as $cat)
+
+            <option
+                value="{{ $cat->id }}"
+                {{ in_array($cat->id, $selectedCategories) ? 'selected' : '' }}>
+
+                {{ $cat->name }}
+
+            </option>
+
+        @endforeach
+
+    </select>
+
+    @error('category_id')
+        <span class="text-danger">{{ $message }}</span>
+    @enderror
+
+    @error('category_id.*')
+        <span class="text-danger">{{ $message }}</span>
+    @enderror
+
+</div>
         </div>
 
-           <div class="col-lg-6 col-12">
-                        <div class="mb-3">
-                            <label class="form-label">Sales Category</label>
-                            <select class="form-control" name="sales_category_models_id">
-                                <option value="">Select Sales Category</option>
-                                @foreach($sales_category as $cat)
-                                    <option value="{{ $cat->id }}" {{ old('sales_category_models_id') == $cat->id ? 'selected' : '' }}>{{ $cat->category_name }}</option>
-                                @endforeach
-                            </select>
-                            @error('sales_category_id') <span class="text-danger">{{ $message }}</span> @enderror
-                        </div>
-                    </div>
+           
 
         {{-- STOCK --}}
         <div class="col-lg-6 col-12">

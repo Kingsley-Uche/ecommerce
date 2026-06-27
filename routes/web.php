@@ -8,6 +8,7 @@ use App\Http\Controllers\V1\StoreDetailsController;
 use App\Http\Controllers\V1\SalesCategory;
 use App\Http\Controllers\V1\WebsiteController;
 use App\Http\Controllers\V1\CartController;
+use App\Http\Controllers\V1\CategoryAssignController;
 use App\Http\Controllers\V1\TransactionController;
 
 Route::get('/', [WebsiteController::class, 'index'])->name('home');
@@ -39,10 +40,19 @@ Route::prefix('admin')->group(function () {
             Route::delete('/delete/{id}', [ProductCategory::class, 'DeleteProductCategory'])->name('admin.product-category.destroy');
 
     });
+    Route::prefix('product/category/assign')->group(function () {              
+            Route::get('/create', [CategoryAssignController::class, 'Create'])->name('admin.product-category.create.load');
+            Route::get('/', [CategoryAssignController::class, 'View'])->name('admin.product-category.index');
+            Route::post('/create', [CategoryAssignController::class, 'CreateProductCategory'])->name('admin.product-category.store');
+            Route::get('/edit/{id}', [CategoryAssignController::class, 'EditProductCategory'])->name('admin.product-category.edit');
+            Route::put('/update/{id}', [CategoryAssignController::class, 'UpdateProductCategory'])->name('admin.product-category.update');
+            Route::delete('/delete/{id}', [CategoryAssignController::class, 'DeleteProductCategory'])->name('admin.product-category.destroy');
+
+    });
     Route::prefix('product')->group(function () {
         Route::get('/create', [ProductController::class, 'loadCreateProduct'])->name('admin.product.create.load');
         Route::get('/', [ProductController::class, 'index'])->name('admin.product.index');
-        Route::post('/create', [ProductController::class, 'create'])->name('admin.product.store');
+        Route::post('/create', [ProductController::class, 'store'])->name('admin.product.store');
         Route::get('/edit/{id}', [ProductController::class, 'ProductById'])->name('admin.product.edit');
         Route::put('/update/{id}', [ProductController::class, 'UpdateProduct'])->name('admin.product.update');
         Route::delete('/delete/{id}', [ProductController::class, 'DeleteProduct'])->name('admin.product.destroy');

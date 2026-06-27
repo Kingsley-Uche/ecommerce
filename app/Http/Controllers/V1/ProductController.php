@@ -9,58 +9,91 @@ use App\Models\ProductModel;
 use App\Models\ProductCategoryModel;
 use App\Models\ProductImageModel;
 use App\Models\SalesCategoryModel;
+use App\Models\CategoryAssign;
+use Illuminate\Support\Facades\DB;
 
 
 class ProductController extends Controller
 {
-    public function create(Request $request)
-    {
-        $data = $request->validate([
-            'name'          => 'required|string|max:255',
-            'description'   => 'nullable|string',
-            'price'         => 'required|numeric|min:0',
-            'category_id'   => 'required|exists:product_category_models,id',
-            'sales_category_models_id'=>'nullable|exists:sales_category_models,id',
-            'stock'         => 'required|integer|min:0',
-            'images'        => 'nullable|array',
-            'images.*'      => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048', 
-        ]);
+  public function store(Request $request)
+{
+    $data = $request->validate([
 
-        
-        $product = ProductModel::create([
-            'name'        => $data['name'],
-            'description' => $data['description'] ?? null,
-            'price'       => $data['price'],
-            'category_id' => $data['category_id'],
-            'sales_category_models_id'=>$data['sales_category_models_id'],
-            'stock'       => $data['stock'],
-        ]);
+        'products' => 'required|array|min:1',
 
-        if ($request->hasFile('images')) {
-            $productImages = [];
+        'products.*.name' => 'required|string|max:255',
 
-            foreach ($request->file('images') as $image) {
-                $imagePath = $image->store('products', 'public');
+        'products.*.description' => 'nullable|string',
 
-                $productImages[] = [
+        'products.*.price' => 'required|numeric|min:0',
+
+        'products.*.stock' => 'required|integer|min:0',
+
+        'products.*.categories' => 'required|array|min:1',
+
+        'products.*.categories.*' => 'exists:product_category_models,id',
+
+        'products.*.images' => 'nullable|array',
+
+        'products.*.images.*' => 'image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+
+    ]);
+    DB::transaction(function () use ($request, $data) {
+
+        foreach ($data['products'] as $index => $item) {
+
+            $product = ProductModel::create([
+                'name'        => $item['name'],
+                'description' => $item['description'] ?? null,
+                'price'       => $item['price'],
+                'stock'       => $item['stock'],
+                'num_sold'    => 0,
+            ]);
+
+            // Save Categories
+            $categories = [];
+
+            foreach ($item['categories'] as $category) {
+
+                $categories[] = [
                     'product_id' => $product->id,
-                    'image_path' => $imagePath,
+                    'category_id'=> $category,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
             }
 
-            ProductImageModel::insert($productImages);
+            CategoryAssign::insert($categories);
+
+            // Save Images
+            if ($request->hasFile("products.$index.images")) {
+
+                $images = [];
+
+                foreach ($request->file("products.$index.images") as $image) {
+
+                    $path = $image->store('products', 'public');
+
+                    $images[] = [
+                        'product_id' => $product->id,
+                        'image_path' => $path,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+
+                ProductImageModel::insert($images);
+            }
         }
+    });
 
-        return redirect()->route('admin.product.index')
-            ->with('success', 'Product created successfully.');
-    }
-
-
+    return redirect()
+        ->route('admin.product.index')
+        ->with('success', 'Products created successfully.');
+}
     public function index()
     {
-        $products = ProductModel::with(['category','images', 'sales_category'])->paginate(10);
+        $products = ProductModel::with(['categories','images'])->paginate(10);
         return view('admin.dashboard.pages.products.index', compact('products'));
 
     }
@@ -75,59 +108,95 @@ class ProductController extends Controller
 
 
     public function productById(int $id)
-    {
-        $product = ProductModel::with('category', 'images', 'sales_category')->findOrFail($id);
-        $categories = ProductCategoryModel::where('status', 'active')->get();
-        $sales_category = SalesCategoryModel::where('is_active', true)->select('id', 'category_name')->get();
-        return view('admin.dashboard.pages.products.edit', compact('product', 'categories','sales_category'));
-    }
+{
+    $product = ProductModel::with([
+        'categories',
+        'images',
+        'sales_category'
+    ])->findOrFail($id);
 
+    $categories = ProductCategoryModel::where('status', 'active')
+        ->orderBy('name')
+        ->get();
 
-    public function updateProduct(Request $request, int $id)
-    {
-        $data = $request->validate([
-            'name'          => 'nullable|string|max:255',
-            'description'   => 'nullable|string',
-            'price'         => 'nullable|numeric|min:0',
-            'category_id'   => 'nullable|exists:product_category_models,id',
-            'sales_category_model_id'=>'nullable|exists:sales_category_models,id',
-            'stock'         => 'nullable|integer|min:0',
-            'images'        => 'nullable|array',
-            'images.*'      => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-        ]);
+  
+
+    return view(
+        'admin.dashboard.pages.products.edit',
+        compact('product', 'categories')
+    );
+}
+
+public function updateProduct(Request $request, int $id)
+{
+    $data = $request->validate([
+        'name'                    => 'required|string|max:255',
+        'description'             => 'nullable|string',
+        'price'                   => 'required|numeric|min:0',
+        'stock'                   => 'required|integer|min:0',
+
+        'sales_category_models_id' => 'nullable|exists:sales_category_models,id',
+
+        'category_id'             => 'required|array|min:1',
+        'category_id.*'           => 'exists:product_category_models,id',
+
+        'images'                  => 'nullable|array',
+        'images.*'                => 'image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+    ]);
+
+    DB::transaction(function () use ($data, $request, $id) {
 
         $product = ProductModel::findOrFail($id);
-        $product->update($data);
 
-        // Handle new images
+        // Update Product
+        $product->update([
+            'name'                     => $data['name'],
+            'description'              => $data['description'] ?? null,
+            'price'                    => $data['price'],
+            'stock'                    => $data['stock'],
+            'sales_category_models_id' => $data['sales_category_models_id'] ?? null,
+        ]);
+
+        // Update Categories
+        $product->categories()->sync($data['category_id']);
+
+        // Replace Images (only if new ones were uploaded)
         if ($request->hasFile('images')) {
 
-            // Delete old images
-            $oldImages = ProductImageModel::where('product_id', $product->id)->get();
-            foreach ($oldImages as $old) {
-                $file = storage_path('app/public/' . $old->image_path);
-                if (file_exists($file)) unlink($file);
+            // Delete existing image files
+            foreach ($product->images as $image) {
+
+                if (Storage::disk('public')->exists($image->image_path)) {
+                    Storage::disk('public')->delete($image->image_path);
+                }
             }
-            ProductImageModel::where('product_id', $product->id)->delete();
 
-            // Upload new images
-            $productImages = [];
+            // Delete image records
+            $product->images()->delete();
+
+            // Save new images
+            $images = [];
+
             foreach ($request->file('images') as $image) {
-                $imagePath = $image->store('products', 'public');
 
-                $productImages[] = [
+                $path = $image->store('products', 'public');
+
+                $images[] = [
                     'product_id' => $product->id,
-                    'image_path' => $imagePath,
+                    'image_path' => $path,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
             }
-            ProductImageModel::insert($productImages);
-        }
 
-        return redirect()->route('admin.product.index')
-            ->with('success', 'Product updated successfully.');
-    }
+            ProductImageModel::insert($images);
+        }
+    });
+
+    return redirect()
+        ->route('admin.product.index')
+        ->with('success', 'Product updated successfully.');
+}
     public function deleteProduct(int $id)
     {
         $product = ProductModel::findOrFail($id);
