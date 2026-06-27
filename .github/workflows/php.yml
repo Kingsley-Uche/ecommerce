@@ -65,12 +65,12 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          script: |
+         script: |
             cd ${{ secrets.DEPLOY_PATH }}/ecommerce
 
-            echo "Wiping untracked files and cleaning workspace..."
-            # -f forces the delete, -d removes whole untracked directories
-            git clean -fd
+            echo "Wiping untracked files but keeping live .env safe..."
+            # Adding -e .env protects your live production configuration file!
+            git clean -fd -e .env
 
             echo "Updating repository to match GitHub exactly..."
             git fetch origin main
@@ -80,10 +80,9 @@ jobs:
             composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 
             echo "Syncing frontend assets to public web root..."
-            # This cleanly copies the fresh build folder to your live cPanel web root
             cp -rT public/build /home/${{ secrets.SERVER_USER }}/public_html/build
 
-            echo "Optimizing Laravel..."
+            echo "Optimizing and caching Laravel with the live .env..."
             php artisan optimize:clear
             php artisan migrate --force
             php artisan config:cache
@@ -91,5 +90,3 @@ jobs:
             php artisan view:cache
 
             chmod -R 775 storage bootstrap/cache
-
-            echo "Deployment completed successfully."

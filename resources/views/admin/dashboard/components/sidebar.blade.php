@@ -68,9 +68,7 @@
                         <li>
                             <a href="{{ route('admin.store_details.index') }}">View</a>
                         </li>
-                        <li>
-                            <a href="{{ route('admin.store_details.create') }}">Create</a>
-                        </li>
+                       
                     </ul>
                 </li>
 
