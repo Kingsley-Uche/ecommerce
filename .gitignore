@@ -3,3 +3,4 @@ vendor/
 npm-debug.log*
 .eslintcache
 AppData/
+.env
