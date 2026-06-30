@@ -12,6 +12,7 @@ use App\Http\Controllers\V1\CategoryAssignController;
 use App\Http\Controllers\V1\TransactionController;
 
 Route::get('/', [WebsiteController::class, 'index'])->name('home');
+Route::post('/', [WebsiteController::class, 'search'])->name('product-search');
 Route::get('/login', [AdminController::class, 'showLoginform'])->name('login');
 Route::post('/payment/initiate', [TransactionController::class, 'initiatePay'])->name('payment.initiate');
 Route::get('/payment/checkout/{cart_token}', [TransactionController::class, 'checkout'])->name('payment.checkout');

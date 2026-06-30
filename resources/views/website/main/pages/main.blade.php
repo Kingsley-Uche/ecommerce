@@ -418,7 +418,7 @@ button { font-family: inherit; }
             @endif
         </div>
     </header>
-
+  
     {{-- ====================================================
          INDEX — categories ordered by priority, as a TOC
          ==================================================== --}}

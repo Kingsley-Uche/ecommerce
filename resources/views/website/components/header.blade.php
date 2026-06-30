@@ -65,11 +65,12 @@
             <h1 class="sitename mb-0">{{ $shop_data['store_name'] ?? 'Our Shop' }}</h1>
           </a>
 
-          {{-- Search — no search route defined yet, see note. Form disabled until added --}}
-          <form class="search-form desktop-search-form" method="GET" action="#">
+          {{-- Search — POST / (product-search route) --}}
+          <form class="search-form desktop-search-form" method="POST" action="{{ route('product-search') }}">
+            @csrf
             <div class="input-group">
-              <input type="text" name="q" class="form-control" placeholder="Search for products" value="{{ request('q') }}" disabled>
-              <button class="btn" type="submit" disabled>
+              <input type="text" name="q" class="form-control" placeholder="Search for products" value="{{ request()->input('q') }}">
+              <button class="btn" type="submit">
                 <i class="bi bi-search"></i>
               </button>
             </div>
@@ -157,7 +158,10 @@
               @endforeach
             @endif
 
-            </ul>
+            <li><a href="{{ route('cart.view', ['cart_id' => 0]) }}">Cart</a></li>
+            {{-- Checkout requires a cart_token: route('payment.checkout', $cartToken) — link here once a token is available client-side --}}
+            {{-- No contact page route defined yet, see note --}}
+          </ul>
         </nav>
       </div>
     </div>
@@ -167,10 +171,11 @@
          ============================================================ --}}
     <div class="collapse" id="mobileSearch">
       <div class="container">
-        <form class="search-form" method="GET" action="#">
+        <form class="search-form" method="POST" action="{{ route('product-search') }}">
+          @csrf
           <div class="input-group">
-            <input type="text" name="q" class="form-control" placeholder="Search for products" value="{{ request('q') }}" disabled>
-            <button class="btn" type="submit" disabled>
+            <input type="text" name="q" class="form-control" placeholder="Search for products" value="{{ request()->input('q') }}">
+            <button class="btn" type="submit">
               <i class="bi bi-search"></i>
             </button>
           </div>

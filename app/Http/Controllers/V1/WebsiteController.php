@@ -111,7 +111,9 @@ class WebsiteController extends Controller
      */
     public function search(Request $request)
     {
-        $term = trim((string) $request->query('q', ''));
+        // Route is POST / so `q` arrives in the request body, not the query string.
+        // input() reads from both body and query string, so this works for either.
+        $term = trim((string) $request->input('q', ''));
 
         $products = collect();
 

@@ -171,5 +171,5 @@
   <script src="{{ asset('assets/js/cart-remove-patches.js') }}"></script>
 
   <div id="loadingSpinner">
-    <div class="spinner"></div>
+    <div class="spinner">SlayShaper</div>
   </div>
