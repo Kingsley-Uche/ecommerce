@@ -2,8 +2,24 @@
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>Ecommerce</title>
-  <meta name="description" content="">
-  <meta name="keywords" content="">
+<meta name="author" content="SlayShaper">
+<meta name="robots" content="index, follow">
+<meta name="language" content="English">
+<meta name="revisit-after" content="7 days">
+<meta name="theme-color" content="#000000">
+<meta name="application-name" content="SlayShaper">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SlayShaper">
+<meta property="og:title" content="SlayShaper | Premium Fashion Store in Nigeria with Worldwide Delivery">
+<meta property="og:description" content="Discover premium fashion, stylish clothing, shoes, bags, accessories, and beauty essentials. Shop confidently from Nigeria with worldwide delivery.">
+<meta property="og:image" content="{{ asset('assets/images/logo.png') }}">
+<meta property="og:url" content="{{ url()->current() }}">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SlayShaper | Premium Fashion Store">
+<meta name="twitter:description" content="Shop trendy fashion, clothing, shoes, bags, and accessories with worldwide delivery from Nigeria.">
+<meta name="twitter:image" content="{{ asset('assets/images/logo.png') }}">
   <!-- Favicons -->
   <link href="{{ asset('assets/img/favicon.png') }}" rel="icon">
   <link href="{{ asset('assets/img/apple-touch-icon.png') }}" rel="apple-touch-icon">
