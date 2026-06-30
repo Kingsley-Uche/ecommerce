@@ -80,7 +80,8 @@ jobs:
 
             echo "Syncing frontend assets to public web root..."
             cp -rT public/build /home/${{ secrets.SERVER_USER }}/public_html/build
-
+            Remove-Item public\storage
+            php artisan storage:link
             echo "Optimizing and caching Laravel with the live .env..."
             php artisan optimize:clear
             php artisan migrate --force
