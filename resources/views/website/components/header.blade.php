@@ -157,10 +157,7 @@
               @endforeach
             @endif
 
-            <li><a href="{{ route('cart.view', ['cart_id' => 0]) }}">Cart</a></li>
-            {{-- Checkout requires a cart_token: route('payment.checkout', $cartToken) — link here once a token is available client-side --}}
-            {{-- No contact page route defined yet, see note --}}
-          </ul>
+            </ul>
         </nav>
       </div>
     </div>

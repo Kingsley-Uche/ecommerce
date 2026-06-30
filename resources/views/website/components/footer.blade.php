@@ -106,7 +106,7 @@
               <!-- All the links in the footer should remain intact. -->
               <!-- You can delete the links only if you've purchased the pro version. -->
               <!-- Licensing information: https://bootstrapmade.com/license/ -->
-              Designed by <a href="https://bootstrapmade.com/">BootstrapMade</a>
+              Designed by <a href="https://www.linkedin.com/in/olekamma-kingsley-90a776128/">Kammasoft Technologies</a>
             </div>
           </div>
 
