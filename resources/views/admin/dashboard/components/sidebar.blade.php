@@ -1,9 +1,7 @@
-<!-- ========== Left Sidebar Start ========== -->
 <div class="vertical-menu">
 
     <div data-simplebar class="h-100">
 
-        <!-- User details -->
         <div class="user-profile text-center mt-3">
             <div>
                 <img src="assets/images/users/avatar-1.jpg" alt="" class="avatar-md rounded-circle">
@@ -17,13 +15,11 @@
             </div>
         </div>
 
-        <!--- Sidemenu -->
         <div id="sidebar-menu">
             <ul class="metismenu list-unstyled" id="side-menu">
 
                 <li class="menu-title">Menu</li>
 
-                <!-- Dashboard -->
                 <li>
                     <a href="index.html" class="waves-effect">
                         <i class="ri-dashboard-3-line"></i>
@@ -32,7 +28,6 @@
                     </a>
                 </li>
 
-                <!-- Product Categories -->
                 <li>
                     <a href="javascript:void(0);" class="has-arrow waves-effect">
                         <i class="ri-price-tag-3-line"></i>
@@ -45,7 +40,6 @@
                     </ul>
                 </li>
 
-                <!-- Products -->
                 <li>
                     <a href="javascript:void(0);" class="has-arrow waves-effect">
                         <i class="ri-shopping-bag-3-line"></i>
@@ -58,7 +52,6 @@
                     </ul>
                 </li>
 
-                <!-- Store Details -->
                 <li>
                     <a href="javascript:void(0);" class="has-arrow waves-effect">
                         <i class="ri-store-2-line"></i>
@@ -68,14 +61,15 @@
                         <li>
                             <a href="{{ route('admin.store_details.index') }}">View</a>
                         </li>
-                       
                     </ul>
                 </li>
 
-            </ul>
-        </div>
-        <!-- Sidebar -->
+                <li>
+                    <a href="{{ route('admin.logout') }}" class="waves-effect text-danger">
+                        <i class="ri-shut-down-line text-danger"></i>
+                        <span>Logout</span>
+                    </a>
+                </li>
 
-    </div>
-</div>
-<!-- Left Sidebar End -->
+            </ul>
+        </div> </div> </div>

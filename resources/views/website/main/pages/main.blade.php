@@ -2,328 +2,573 @@
 
 @section('content')
 
-<main class="main">
-    <!-- Hero Section -->
-    <section id="hero" class="hero section">
+<style>
+/* ============================================================
+   TOKENS
+   ============================================================ */
+:root {
+    --paper:    #faf8f4;
+    --paper-2:  #f2efe7;
+    --ink:      #1c1a17;
+    --ink-mid:  #635d52;
+    --ink-soft: #a59c8c;
+    --line:     #e4e0d8;
+    --clay:     #b5562e;
+    --clay-dim: #e9d2c5;
+    --moss:     #5c6650;
+    --radius:   2px;
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-mono:    'Space Grotesk', 'Courier New', monospace;
+    --ease: cubic-bezier(.4,0,.2,1);
+}
 
-      <div class="hero-container">
-        <div class="hero-content">
-          <div class="content-wrapper" data-aos="fade-up" data-aos-delay="100">
-            <h1 class="hero-title">Discover Amazing Products</h1>
-            <p class="hero-description">Explore our curated collection of premium items designed to enhance your lifestyle. From fashion to tech, find everything you need with exclusive deals and fast shipping.</p>
-            <div class="hero-actions" data-aos="fade-up" data-aos-delay="200">
-              <a href="#products" class="btn-primary">Shop Now</a>
-              <a href="#categories" class="btn-secondary">Browse Categories</a>
-            </div>
-            <div class="features-list" data-aos="fade-up" data-aos-delay="300">
-              <div class="feature-item">
-                <i class="bi bi-truck"></i>
-                <span>Free Shipping</span>
-              </div>
-              <div class="feature-item">
-                <i class="bi bi-award"></i>
-                <span>Quality Guarantee</span>
-              </div>
-              <div class="feature-item">
-                <i class="bi bi-headset"></i>
-                <span>24/7 Support</span>
-              </div>
-            </div>
-          </div>
-        </div>
+*, *::before, *::after { box-sizing: border-box; }
+a { text-decoration: none; color: inherit; }
+img { display: block; max-width: 100%; }
+button { font-family: inherit; }
 
-        <div class="hero-visuals">
-          <div class="product-showcase" data-aos="fade-left" data-aos-delay="200">
-            <div class="product-card featured">
-              <!-- Featured Product -->
-               <div class="hero-product-slider swiper init-swiper">
-    <script type="application/json" class="swiper-config">
-    {
-        "loop": true,
-        "speed":3000,
-        "autoplay": {
-            "delay": 5000,
-        },
-        "slidesPerView": 1,
-        direction": "vertical",
-        "slidesPerView": 1,
-                  "direction": "vertical",
-                  "effect": "slide"
-    }
-    </script>
+.catalogue {
+    font-family: var(--font-mono);
+    color: var(--ink);
+    background: var(--paper);
+    font-size: 15px;
+}
 
-    <div class="swiper-wrapper">
-        @php
-            $frontpageProducts = $shop_data['products'] ?? [];
-        @endphp
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 1.75rem; }
 
-        @if(!empty($frontpageProducts))
-            @foreach($frontpageProducts as $product)
-                <div class="swiper-slide">
-                    <img src="{{ asset('storage/' . ($product['image'] ?? 'default.jpg')) }}" alt="{{ $product['name'] }}">
-                    <div class="product-info">
-                        <h4>{{ $product['name'] }}</h4>
-                        <p>₦{{ number_format($product['price'], 2) }}</p>
-                    </div>
-                </div>
-            @endforeach
-        @else
-            <div class="swiper-slide">No products available</div>
-        @endif
-    </div>
-</div>
+/* ============================================================
+   MASTHEAD  — built only from real shop_data fields
+   ============================================================ */
+.masthead {
+    border-bottom: 1px solid var(--line);
+}
 
-            </div>
-            </div>
-          </div>
-        </div>
-      </div>
+.masthead-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .85rem 0;
+    font-size: .72rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    border-bottom: 1px solid var(--line);
+}
+.masthead-bar .contact-bits { display: flex; gap: 1.5rem; }
+.masthead-bar .contact-bits span { display: flex; align-items: center; gap: .4rem; }
+.masthead-bar i { color: var(--clay); font-size: .85rem; }
 
-    </section><!-- /Hero Section -->
+.masthead-main {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 2rem;
+    padding: 3rem 0 2.25rem;
+}
 
+.brand-logo {
+    height: 34px;
+    width: auto;
+    margin-bottom: 1.1rem;
+}
 
-    <!-- Promo Cards Section -->
-    <section id="promo-cards" class="promo-cards section">
-        <div class="container" data-aos="fade-up" data-aos-delay="100">
-          
-<h5>Shop by Category</h5>
-                <div class="col-lg-12">
-                    <div class="row gy-4">
-                        @for($i = 1; $i <= 20; $i++)
-                            @if(isset($product_categ[$i]))
-                                @php
-                                    $cat = $product_categ[$i];
-                                    $img = 'assets/img/product/product-' . ($i == 1 ? 'm-5' : ($i == 2 ? '8' : ($i == 3 ? '3' : '12'))) . '.webp';
-                                @endphp
-                                <div class="col-xl-3 col-md-6">
-                                    <div class="category-card {{ $i == 1 ? 'cat-men' : ($i == 2 ? 'cat-kids' : ($i == 3 ? 'cat-cosmetics' : 'cat-accessories')) }}" data-aos="fade-up" data-aos-delay="{{ 200 + ($i * 100) }}">
-                                        <div class="category-image">
-                                            <img src="{{ asset($img) }}" alt="{{ $cat['category_name'] }}" class="img-fluid">
-                                        </div>
-                                        <div class="category-content">
-                                            <h4>{{ $cat['category_name'] }}</h4>
-                                            <p>{{ count($cat['products']) }} products</p>
-                                            <a href="{{ route('category.products', ['category_id' => encrypt($i)]) }}" class="card-link">View products <i class="bi bi-arrow-right"></i></a>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
-                        @endfor
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-    <!-- /Promo Cards Section -->
+.brand-name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(2.75rem, 7vw, 5.25rem);
+    line-height: .92;
+    letter-spacing: -.01em;
+}
 
-    <!-- Best Sellers Section -->
-    @if(isset($sale_categ_data) && count($sale_categ_data) > 0)
-        @foreach($sale_categ_data as $index => $category)
-            <section id="best-sellers-{{ $loop->index }}" class="best-sellers section">
-                <!-- Section Title -->
-                <div class="container section-title" data-aos="fade-up">
-                    <h2>{{ $category['sales_category_name'] }}</h2>
-                    <p>{{ $category['sales_category_description'] ?? 'Explore our top-selling items' }}</p>
-                </div>
+.brand-tagline {
+    font-size: .95rem;
+    color: var(--ink-mid);
+    max-width: 32ch;
+    text-align: right;
+    line-height: 1.6;
+    padding-bottom: .35rem;
+}
 
-                <div class="container" data-aos="fade-up" data-aos-delay="100">
-                    <div class="row g-5">
-                  @foreach($category['products'] as $product)
-    <div class="col-lg-3 col-md-6">
-    <div class="product-item">
+/* ============================================================
+   INDEX  — table-of-contents for categories (priority = order)
+   ============================================================ */
+.index-section { padding: 3.5rem 0 4rem; border-bottom: 1px solid var(--line); }
 
-        <div class="product-image"
-             style="height: 22vh; overflow: hidden; display: flex; justify-content: center; align-items: center; background: #f8f8f8; border-radius: 8px;">
+.index-eyebrow {
+    font-size: .7rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--clay);
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    display: block;
+}
 
-            <!-- OPTIONAL BADGE -->
-            @if(!empty($product['badge']))
-                <div class="product-badge trending-badge">{{ $product['badge'] }}</div>
-            @endif
+.index-list { border-top: 1px solid var(--ink); }
 
-            @php
-                $img = $product['images'][0]->image_path ?? 'assets/img/default-product.png';
-            @endphp
+.index-row {
+    display: grid;
+    grid-template-columns: 3.5rem 1fr auto auto;
+    align-items: baseline;
+    gap: 1.5rem;
+    padding: 1.15rem 0;
+    border-bottom: 1px solid var(--line);
+    transition: padding-left .3s var(--ease), background .3s var(--ease);
+}
+.index-row:hover { padding-left: .5rem; background: var(--paper-2); }
 
-            <img src="{{ asset('storage/' . $img) }}"
-                 alt="{{ $product['name'] }}"
-                 class="p-1"
-                 loading="lazy"
-                 style="height: 18vh; width: auto; object-fit: contain;"> 
-        </div>
+.index-num {
+    font-family: var(--font-display);
+    font-style: italic;
+    color: var(--ink-soft);
+    font-size: 1rem;
+}
 
-        <div class="product-info">
+.index-name {
+    font-family: var(--font-display);
+    font-size: clamp(1.15rem, 2.4vw, 1.65rem);
+    font-weight: 500;
+}
 
-            <div class="product-category">
-                {{ $category['sales_category_name'] }}
-            </div>
+.index-count {
+    font-size: .78rem;
+    color: var(--ink-mid);
+    white-space: nowrap;
+}
 
-            <h4 class="product-name">
-                <a href="{{ url('/product/' . Str::slug($product['name'])) }}">
-                    {{ Str::limit($product['name'], 40) }}
-                </a>
-            </h4>
-              <form method ='post' name='add_to_cart' id='add_to_cart' action="{{route('api.cart.add')}}">
-                              <input type ='hidden' name='product_name' value="{{$product['name']}}">
-                              <input type ='hidden' name='product_id' value="{{$product['id']}}">
-                              <input type='hidden' name='quantity' value='1'>
-                          <button class="cart-btn btn-sm form_button">Add to Cart</button>
-                          </form>
-                 <div class="mt-3">
-                          <button class="btn btn-outline-dark btn-sm w-100 mb-2" 
-                                  type="button" 
-                                  data-bs-toggle="collapse" 
-                                  data-bs-target="#productDetails{{ $product['id'] }}" 
-                                  aria-expanded="false" 
-                                  aria-controls="productDetails{{ $product['id'] }}">
-                            Description
-                          </button>
-                          <div class="collapse mt-2" id="productDetails{{ $product['id'] }}">
-                            <div class="card card-body border-light text-start small">
-                              <h6 class="fw-bold mb-2">Description</h6>
-                              <p class="mb-0 text-muted">{{ $product['description'] ?? 'No description available.' }}</p>
-                            </div>
-                          </div>
-            <div class="product-rating">
-                <div class="stars">
-                    @for($i = 1; $i <= 5; $i++)
-                        <i class="bi bi-star-fill"></i>
-                    @endfor
-                </div>
-                <span class="rating-count">({{ rand(20, 170) }})</span>
-            </div>
+.index-go {
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink);
+    border-bottom: 1px solid var(--ink);
+    padding-bottom: 2px;
+    white-space: nowrap;
+}
+.index-row:hover .index-go { color: var(--clay); border-color: var(--clay); }
 
-            <div class="product-price">
-                ₦{{ number_format($product['price'], 2) }}
-            </div>
+.index-empty {
+    padding: 2rem 0;
+    color: var(--ink-soft);
+    font-size: .9rem;
+}
 
-        </div>
-    </div>
-</div>
+/* ============================================================
+   CATEGORY SECTIONS  + ledger rail signature element
+   ============================================================ */
+.cat-block { padding: 4rem 0; border-bottom: 1px solid var(--line); }
 
-@endforeach
+.cat-block-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+}
 
-                    </div>
-                </div>
-            </section>
-        @endforeach
-    @endif
-        
-    <!-- /Best Sellers Section -->
+.cat-id {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 1.05rem;
+    color: var(--clay);
+}
 
-    <!-- Cards Section -->
-    
-    <section id="cards" class="cards section">
-        <div class="container" data-aos="fade-up" data-aos-delay="100">
-            @if(isset($product_categ) && count($product_categ) > 0)
-                @foreach($product_categ as $cat)
-                    <div class="mb-5">
-                        <h3 class="category-title mb-4">
-                              <i class="bi bi-award"></i>  {{ $cat['category_name'] }}
-                        </h3>
+.cat-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.85rem, 4vw, 2.85rem);
+    font-weight: 600;
+    line-height: 1.05;
+    margin: .3rem 0 .6rem;
+}
 
-                        <div class="row gy-4">
-                            @foreach(collect($cat['products'])->take(10) as $product)
-                                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
-                                    <div class="product-card shadow-sm p-2 rounded">
-                                        <div class="product-image">
-                                            @php
-                                                $image = $product['images']->first()->image_path ?? null;
-                                            @endphp
-                                            <img 
-                                                src="{{ asset('storage/' . $image) }}" 
-                                                alt="{{ $product['name'] }}" 
-                                                class="img-fluid rounded"
-                                                style="height:15vh;object-fit:contain;"
-                                            >
-                                        </div>
+.cat-desc {
+    color: var(--ink-mid);
+    max-width: 56ch;
+    font-size: .9rem;
+    line-height: 1.65;
+}
 
-                                        <div class="product-info mt-3">
-                                            <h4 class="product-name fw-bold">{{ Str::limit($product['name'], 30) }}</h4>
-                                            <p class="small text-muted">{{ Str::limit($product['description'], 60) }}</p>
-                                            <div class="product-price fw-bold">
-                                                ₦{{ number_format($product['price'], 2) }}
-                                            </div>
-                                             <div class="product-price fw-bold">
-                                                <form method ='post' name='add_to_cart' id='add_to_cart' action="{{route('api.cart.add')}}">
-                                                 <input type ='hidden' name='product_name' value="{{$product['name']}}">
-                                                <input type ='hidden' name='product_id' value="{{$product['id']}}">
-                                                <input type='hidden' name='quantity' value='1'>
-                                                <button class='btn btn-dark text-white form_button cart-btn'> Add to cart</button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endforeach
+.cat-meta {
+    text-align: right;
+    font-size: .75rem;
+    color: var(--ink-soft);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+/* product grid with running ledger rail */
+.product-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 0;
+    border-top: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+}
+
+.product-cell {
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 1.5rem 1.5rem 1.65rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: background .25s var(--ease);
+}
+.product-cell:hover { background: var(--paper-2); }
+
+.stock-ledger {
+    font-size: .68rem;
+    color: var(--ink-soft);
+    letter-spacing: .04em;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-bottom: .9rem;
+}
+.stock-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--moss);
+    flex-shrink: 0;
+}
+.stock-dot.low { background: var(--clay); }
+.stock-dot.out { background: var(--ink-soft); }
+
+.pc-image {
+    height: 170px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--paper);
+    margin-bottom: 1.1rem;
+    overflow: hidden;
+}
+.pc-image img {
+    max-height: 150px;
+    width: auto;
+    object-fit: contain;
+    transition: transform .4s var(--ease);
+}
+.product-cell:hover .pc-image img { transform: scale(1.04); }
+
+.pc-name {
+    font-family: var(--font-display);
+    font-size: 1.02rem;
+    font-weight: 500;
+    line-height: 1.35;
+    margin-bottom: .4rem;
+}
+.pc-name a:hover { color: var(--clay); }
+
+.pc-desc {
+    font-size: .78rem;
+    color: var(--ink-mid);
+    line-height: 1.55;
+    margin-bottom: 1rem;
+    flex: 1;
+}
+
+.pc-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding-top: .85rem;
+    border-top: 1px solid var(--line);
+}
+
+.pc-price {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+.add-cart-btn {
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    font-family: var(--font-mono);
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: .55rem .9rem;
+    cursor: pointer;
+    transition: background .2s var(--ease);
+}
+.add-cart-btn:hover { background: var(--clay); }
+.add-cart-btn:disabled { background: var(--ink-soft); cursor: not-allowed; }
+
+.cart-form { display: contents; }
+
+/* ============================================================
+   FOOTER  — built from real shop_data only
+   ============================================================ */
+.site-footer { padding: 3.5rem 0 2.5rem; }
+
+.footer-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: 2.5rem;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.footer-brand .brand-name { font-size: 1.6rem; margin-bottom: .6rem; }
+.footer-brand p { color: var(--ink-mid); font-size: .85rem; max-width: 32ch; line-height: 1.6; }
+
+.footer-col h5 {
+    font-size: .7rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--clay);
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+.footer-col p, .footer-col a {
+    display: block;
+    font-size: .85rem;
+    color: var(--ink-mid);
+    margin-bottom: .55rem;
+}
+.footer-col a:hover { color: var(--clay); }
+
+.social-row { display: flex; gap: .9rem; margin-top: .25rem; }
+.social-row a {
+    width: 32px; height: 32px;
+    border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    transition: all .2s var(--ease);
+}
+.social-row a:hover { border-color: var(--clay); color: var(--clay); }
+
+.footer-bottom {
+    padding-top: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    font-size: .72rem;
+    color: var(--ink-soft);
+    letter-spacing: .04em;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 860px) {
+    .masthead-main { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .brand-tagline { text-align: left; }
+    .index-row { grid-template-columns: 2.5rem 1fr auto; }
+    .index-count { display: none; }
+    .cat-block-head { flex-direction: column; align-items: flex-start; }
+    .cat-meta { text-align: left; }
+    .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
+}
+@media (max-width: 560px) {
+    .masthead-bar .contact-bits { gap: .9rem; }
+    .masthead-bar .contact-bits span:nth-child(3) { display: none; }
+}
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<div class="catalogue">
+
+    {{-- ====================================================
+         MASTHEAD — store_name, tagline, logo, contact, all real
+         ==================================================== --}}
+    <header class="masthead">
+        <div class="wrap masthead-bar">
+            <div class="contact-bits">
+                @if(!empty($shop_data['phone']))
+                    <span><i class="bi bi-telephone"></i> {{ $shop_data['phone'] }}</span>
                 @endif
-        </div>
-    </section>
-    <!-- /Cards Section -->
-
-    <!-- Call To Action Section -->
-    <section id="call-to-action" class="call-to-action section">
-        <div class="container" data-aos="fade-up" data-aos-delay="100">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <div class="main-content text-center" data-aos="zoom-in" data-aos-delay="200">
-                        <div class="offer-badge" data-aos="fade-down" data-aos-delay="250">
-                            <span class="limited-time">Limited Time</span>
-                            <span class="offer-text">50% OFF</span>
-                        </div>
-                        <h2 data-aos="fade-up" data-aos-delay="300">Exclusive Flash Sale</h2>
-                        <p class="subtitle" data-aos="fade-up" data-aos-delay="350">Don't miss out on our biggest sale of the year. Premium quality products at unbeatable prices for the next 48 hours only.</p>
-                        <div class="countdown-wrapper" data-aos="fade-up" data-aos-delay="400">
-                            <div class="countdown d-flex justify-content-center" data-count="2025/12/31">
-                                <div><h3 class="count-days"></h3><h4>Days</h4></div>
-                                <div><h3 class="count-hours"></h3><h4>Hours</h4></div>
-                                <div><h3 class="count-minutes"></h3><h4>Minutes</h4></div>
-                                <div><h3 class="count-seconds"></h3><h4>Seconds</h4></div>
-                            </div>
-                        </div>
-                        <div class="action-buttons" data-aos="fade-up" data-aos-delay="450">
-                            <a href="#" class="btn-shop-now form_button form_button">Shop Now</a>
-                            <a href="#" class="btn-view-deals">View All Deals</a>
-                        </div>
-                    </div>
-                </div>
+                @if(!empty($shop_data['email']))
+                    <span><i class="bi bi-envelope"></i> {{ $shop_data['email'] }}</span>
+                @endif
+                @if(!empty($shop_data['address']))
+                    <span><i class="bi bi-geo-alt"></i> {{ $shop_data['address'] }}</span>
+                @endif
             </div>
 
-            <div class="row featured-products-row" data-aos="fade-up" data-aos-delay="500">
-                @if(isset($sale_categ_data[0]['products']))
-                    @foreach(collect($sale_categ_data[0]['products'])->take(4) as $index => $product)
-                        <div class="col-lg-3 col-md-6" data-aos="zoom-in" data-aos-delay="{{ 100 + ($index * 50) }}">
-                            <div class="product-showcase" style="height:10vh">
-                                <div class="product-image" >
-                                    @php
-                                        $img = $product['images'][0]->image_path ?? 'assets/img/product/product-5.webp';
-                                    @endphp
-                                    <img src="{{ asset('storage/' . $img) }}" alt="{{ $product['name'] }}" class="img-fluid">
-                                    <div class="discount-badge">-{{ rand(30, 60) }}%</div>
-                                </div>
-                                <div class="product-details">
-                                    <h6>{{ Str::limit($product['name'], 25) }}</h6>
-                                    <div class="price-section">
-                                        <span class="original-price">₦{{ number_format($product['price'] * 1.8, 2) }}</span>
-                                        <span class="sale-price">₦{{ number_format($product['price'], 2) }}</span>
-                                    </div>
-                                    <div class="rating-stars">
-                                        @for($i = 1; $i <= 5; $i++)
-                                            <i class="bi bi-star{{ $i <= 4 ? '-fill' : '' }}"></i>
-                                        @endfor
-                                        <span class="rating-count">({{ rand(100, 400) }})</span>
-                                    </div>
-                                </div>
+            @if(!empty($shop_data['social_links']) && is_array($shop_data['social_links']))
+                <div class="contact-bits">
+                    @foreach($shop_data['social_links'] as $platform => $url)
+                        @if($url)
+                            <a href="{{ $url }}" target="_blank" rel="noopener">{{ ucfirst($platform) }}</a>
+                        @endif
+                    @endforeach
+                </div>
+            @endif
+        </div>
+
+        <div class="wrap masthead-main">
+            <div>
+                @if(!empty($shop_data['logo_path']))
+                    <img class="brand-logo" src="{{ asset('storage/' . $shop_data['logo_path']) }}" alt="{{ $shop_data['store_name'] ?? 'Store' }} logo">
+                @endif
+                <h1 class="brand-name">{{ $shop_data['store_name'] ?? 'Our Shop' }}</h1>
+            </div>
+
+            @if(!empty($shop_data['tagline']))
+                <p class="brand-tagline">{{ $shop_data['tagline'] }}</p>
+            @endif
+        </div>
+    </header>
+
+    {{-- ====================================================
+         INDEX — categories ordered by priority, as a TOC
+         ==================================================== --}}
+    <section class="index-section">
+        <div class="wrap">
+            <span class="index-eyebrow">Catalogue Index</span>
+
+            @if(count($product_categ))
+                <div class="index-list">
+                    @foreach($product_categ as $catId => $cat)
+                        <a href="#cat-{{ $catId }}" class="index-row">
+                            <span class="index-num">{{ sprintf('%02d', $loop->iteration) }}</span>
+                            <span class="index-name">{{ $cat['category_name'] }}</span>
+                            <span class="index-count">{{ count($cat['products']) }} item{{ count($cat['products']) === 1 ? '' : 's' }}</span>
+                            <span class="index-go">View →</span>
+                        </a>
+                    @endforeach
+                </div>
+            @else
+                <p class="index-empty">No categories are available right now. Please check back shortly.</p>
+            @endif
+        </div>
+    </section>
+
+    {{-- ====================================================
+         CATEGORY BLOCKS — products with stock ledger
+         ==================================================== --}}
+    @foreach($product_categ as $catId => $cat)
+        <section class="cat-block" id="cat-{{ $catId }}">
+            <div class="wrap">
+                <div class="cat-block-head">
+                    <div>
+                        <span class="cat-id">{{ sprintf('%02d', $loop->iteration) }} / {{ sprintf('%02d', count($product_categ)) }}</span>
+                        <h2 class="cat-title">{{ $cat['category_name'] }}</h2>
+                        @if(!empty($cat['category_description']))
+                            <p class="cat-desc">{{ $cat['category_description'] }}</p>
+                        @endif
+                    </div>
+                    <div class="cat-meta">{{ count($cat['products']) }} listed</div>
+                </div>
+
+                <div class="product-row">
+                    @foreach($cat['products'] as $product)
+                        @php
+                            $image = $product['images']->first()->image_path ?? null;
+                            $stock = $product['stock'] ?? 0;
+                            $stockClass = $stock <= 0 ? 'out' : ($stock <= 5 ? 'low' : '');
+                            $stockLabel = $stock <= 0 ? 'Out of stock' : ($stock <= 5 ? $stock . ' left' : 'In stock');
+                        @endphp
+                        <div class="product-cell">
+                            <div class="stock-ledger">
+                                <span class="stock-dot {{ $stockClass }}"></span>
+                                {{ $stockLabel }}
+                            </div>
+
+                            <div class="pc-image">
+                                @if($image)
+                                    <img src="{{ asset('storage/' . $image) }}" alt="{{ $product['name'] }}" loading="lazy">
+                                @else
+                                    <img src="{{ asset('assets/img/default-product.png') }}" alt="{{ $product['name'] }}" loading="lazy">
+                                @endif
+                            </div>
+
+                            <p class="pc-name">
+                                <a href="{{ url('/product/' . \Illuminate\Support\Str::slug($product['name'])) }}">
+                                    {{ \Illuminate\Support\Str::limit($product['name'], 48) }}
+                                </a>
+                            </p>
+
+                            @if(!empty($product['description']))
+                                <p class="pc-desc">{{ \Illuminate\Support\Str::limit($product['description'], 80) }}</p>
+                            @endif
+
+                            <div class="pc-bottom">
+                                <span class="pc-price">₦{{ number_format($product['price'], 2) }}</span>
+
+                                <form method="post" action="{{ route('api.cart.add') }}" class="cart-form">
+                                    @csrf
+                                    <input type="hidden" name="product_name" value="{{ $product['name'] }}">
+                                    <input type="hidden" name="product_id" value="{{ $product['id'] }}">
+                                    <input type="hidden" name="quantity" value="1">
+                                    <button type="submit" class="add-cart-btn" {{ $stock <= 0 ? 'disabled' : '' }}>
+                                        {{ $stock <= 0 ? 'Sold out' : 'Add to cart' }}
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     @endforeach
-                @endif
-                   
+                </div>
+            </div>
+        </section>
+    @endforeach
+
+    {{-- ====================================================
+         FOOTER — store details only, no invented content
+         ==================================================== --}}
+    <footer class="site-footer">
+        <div class="wrap">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <h3 class="brand-name">{{ $shop_data['store_name'] ?? 'Our Shop' }}</h3>
+                    @if(!empty($shop_data['tagline']))
+                        <p>{{ $shop_data['tagline'] }}</p>
+                    @endif
+
+                    @if(!empty($shop_data['social_links']) && is_array($shop_data['social_links']))
+                        <div class="social-row">
+                            @foreach($shop_data['social_links'] as $platform => $url)
+                                @if($url)
+                                    <a href="{{ $url }}" target="_blank" rel="noopener" aria-label="{{ ucfirst($platform) }}">
+                                        @if(!empty($shop_data['social_icons'][$platform]))
+                                            <i class="bi bi-{{ $shop_data['social_icons'][$platform] }}"></i>
+                                        @else
+                                            <i class="bi bi-link-45deg"></i>
+                                        @endif
+                                    </a>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+
+                <div class="footer-col">
+                    <h5>Contact</h5>
+                    @if(!empty($shop_data['phone']))
+                        <p>{{ $shop_data['phone'] }}</p>
+                    @endif
+                    @if(!empty($shop_data['email']))
+                        <p>{{ $shop_data['email'] }}</p>
+                    @endif
+                    @if(!empty($shop_data['address']))
+                        <p>{{ $shop_data['address'] }}</p>
+                    @endif
+                </div>
+
+                <div class="footer-col">
+                    <h5>Catalogue</h5>
+                    @foreach($product_categ as $catId => $cat)
+                        <a href="#cat-{{ $catId }}">{{ $cat['category_name'] }}</a>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <span>&copy; {{ date('Y') }} {{ $shop_data['store_name'] ?? 'Our Shop' }}</span>
+                <span>All rights reserved</span>
             </div>
         </div>
-    </section>
-    <!-- /Call To Action Section -->
-</main>
-@endsection()
+    </footer>
+
+</div>
+
+@endsection

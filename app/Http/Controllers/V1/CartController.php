@@ -12,181 +12,191 @@ use Illuminate\Support\Facades\Validator;
 class CartController extends Controller
 {
     /**
+     * Resolve the current cart owner: either the authenticated user's id,
+     * or a guest cart_token (cookie first, falling back to request input).
+     */
+    private function resolveCartOwner(Request $request): array
+    {
+        $userId    = auth()->id();
+        $cartToken = $request->cookie('cart_token') ?? $request->input('cart_token');
+
+        if (!$userId && !$cartToken) {
+            $cartToken = (string) Str::uuid();
+            Cookie::queue('cart_token', $cartToken, 43200); // 30 days
+        }
+
+        return [$userId, $cartToken];
+    }
+
+    /**
+     * Total item count across the whole cart (sum of quantities),
+     * used to keep the header badge accurate.
+     */
+    private function cartCount($userId, $cartToken): int
+    {
+        return (int) CartModel::query()
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken))
+            ->sum('quantity');
+    }
+
+    /**
      * Add a product to cart
      */
-   public function save(Request $request)
-{
-    
-    $validator = Validator::make($request->all(), [
-        'product_id' => 'required|integer',
-        'quantity'   => 'required|integer|min:1',
-    ]);
+    public function save(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'product_id' => 'required|integer',
+            'quantity'   => 'required|integer|min:1',
+        ]);
 
-
-    if ($validator->fails()) {
-        return response()->json([
-            'status'  => 'error',
-            'message' => 'Validation failed',
-            'errors'  => $validator->errors(),
-        ], 422);
-    }
-
-    $data = $validator->validated();   
-    $userId    = auth()->id();
-    $cartToken = $request->cookie('cart_token');
-    
-
-    // If guest user has no cart token → create once
-    if (!$cartToken && !$userId) {
-        $cartToken = (string) Str::uuid();
-        Cookie::queue('cart_token', $cartToken, 43200); // 30 days
-    }
-
-    // Build base query once
-    $query = CartModel::query()
-        ->when($userId, fn($q) => $q->where('user_id', $userId))
-        ->when(!$userId, fn($q) => $q->where('cart_token', $cartToken));
-
-    // Fetch cart item (fast single DB query)
-    $existing = $query->where('product_id', $data['product_id'])->first();
-    
-
-    if ($existing) {
-        $quantity = (int)$existing->quantity;
-
-        // No change needed → early return (fast!)
-        
+        if ($validator->fails()) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Item already in cart',
-                'data'    => ['cart_token' => $cartToken],
-                'count'=>$data['total_quantity']
-            ], 200);
-       
+                'message' => 'Validation failed',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
 
-    } else {
-        // Insert new cart item
+        $data = $validator->validated();
+        [$userId, $cartToken] = $this->resolveCartOwner($request);
+
+        $query = CartModel::query()
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken));
+
+        $existing = $query->where('product_id', $data['product_id'])->first();
+
+        if ($existing) {
+            // Item already in cart: bump the quantity instead of rejecting the add
+            $existing->update([
+                'quantity' => $existing->quantity + $data['quantity'],
+            ]);
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Cart quantity updated',
+                'data'    => ['cart_token' => $cartToken],
+                'count'   => $this->cartCount($userId, $cartToken),
+            ], 200);
+        }
+
         CartModel::create([
             'user_id'    => $userId,
             'cart_token' => $cartToken,
             'product_id' => $data['product_id'],
             'quantity'   => $data['quantity'],
         ]);
-       $newQuantity = $data['quantity']+1;
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Product added to cart',
+            'data'    => ['cart_token' => $cartToken],
+            'count'   => $this->cartCount($userId, $cartToken),
+        ], 200);
     }
-
-    return response()->json([
-        'status'  => 'success',
-        'message' => 'Product added to cart',
-        'data'    => ['cart_token' => $cartToken],
-        'count'=>$newQuantity,
-    ], 200);
-}
-
 
     /**
-     * Update the quantity of a product in the cart
+     * Update the quantity of one or more products in the cart.
+     * Setting quantity to 0 removes that item.
      */
- public function update(Request $request)
-{
-    $data = $request->validate([
-        'product_id'   => 'required|array',
-        'product_id.*' => 'required|integer',
-        'quantity'     => 'required|array',
-        'quantity.*'   => 'required|integer|min:0',
-    ]);
+    public function update(Request $request)
+    {
+        $data = $request->validate([
+            'product_id'   => 'required|array',
+            'product_id.*' => 'required|integer',
+            'quantity'     => 'required|array',
+            'quantity.*'   => 'required|integer|min:0',
+        ]);
 
-    $userId = auth()->id();
-    $cartToken = $request->query('cart_token') ?? $request->cookie('cart_token');
+        [$userId, $cartToken] = $this->resolveCartOwner($request);
 
-    // fetch user's cart items
-    $cartItems = CartModel::when($userId, fn($q) => $q->where('user_id', $userId))
-        ->when(!$userId, fn($q) => $q->where('cart_token', $cartToken))
-        ->whereIn('product_id', $data['product_id'])
-        ->get();
+        $cartItems = CartModel::query()
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken))
+            ->whereIn('product_id', $data['product_id'])
+            ->get()
+            ->keyBy('product_id');
 
-    if ($cartItems->isEmpty()) {
-        return response()->json(['status' => 'error', 'message' => 'Items not found in cart'], 404);
-    }
-    
-$updated =0;
-    foreach ($cartItems as $index => $item) {
-
-        $newQty = $data['quantity'][$index];
-
-        if ($newQty == 0) {
-            // DELETE the item
-            $item->delete();
-        } else {
-            // UPDATE the quantity
-            $item->update([
-                'quantity' => $newQty
-            ]);
-            $updated = +$newQty;
+        if ($cartItems->isEmpty()) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Items not found in cart',
+            ], 404);
         }
+
+        foreach ($data['product_id'] as $index => $productId) {
+            $item = $cartItems->get($productId);
+
+            if (!$item) {
+                continue;
+            }
+
+            $newQty = $data['quantity'][$index];
+
+            if ($newQty === 0) {
+                $item->delete();
+            } else {
+                $item->update(['quantity' => $newQty]);
+            }
+        }
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Cart updated successfully',
+            'count'   => $this->cartCount($userId, $cartToken),
+        ], 200);
     }
-
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Cart updated successfully',
-        'count'=>$updated,
-    ],201);
-}
-
-
 
     /**
      * Get all cart items
      */
-  public function getCart(Request $request)
-{
-    $validator = Validator::make($request->all(), [
-        'cart_token' => 'sometimes|string',
-    ]);
+    public function getCart(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'cart_token' => 'sometimes|string',
+        ]);
 
-    if ($validator->fails()) {
-        return response()->json(['message' => 'Invalid cart token'], 422);
-    }
-
-    $userId = auth()->id();
-    $cartToken = $request->input('cart_token'); // POST body
-
-    if (!$userId && !$cartToken) {
-        return response()->json([
-            'message' => 'No cart identifier available',
-        ], 422);
-    }
-
-    $cartItems = CartModel::when($userId, fn($q) => $q->where('user_id', $userId))
-        ->when(!$userId, fn($q) => $q->where('cart_token', $cartToken))
-        ->with('product')
-        ->get();
-        $count =0;
-        foreach($cartItems as $item){
-            $count = +$item->quantity;
+        if ($validator->fails()) {
+            return response()->json(['message' => 'Invalid cart token'], 422);
         }
 
-    return response()->json([
-        'status' => 'success',
-        'count'  => $count,
-        'data'   => $cartItems,
-        'cart_token'=>$cartToken
-    ], 200);
-}
+        $userId    = auth()->id();
+        $cartToken = $request->input('cart_token') ?? $request->cookie('cart_token');
 
+        if (!$userId && !$cartToken) {
+            return response()->json([
+                'message' => 'No cart identifier available',
+            ], 422);
+        }
+
+        $cartItems = CartModel::query()
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken))
+            ->with('product.images')
+            ->get();
+
+        return response()->json([
+            'status'     => 'success',
+            'count'      => (int) $cartItems->sum('quantity'),
+            'data'       => $cartItems,
+            'cart_token' => $cartToken,
+        ], 200);
+    }
 
     /**
-     * Remove one product from cart
+     * Remove one product from cart.
+     * Route name is api.cart.remove → method must be named `remove` to match.
      */
-    public function removeItem(Request $request)
+    public function remove(Request $request)
     {
         $data = $request->validate(['product_id' => 'required|integer']);
 
-        $userId = auth()->id();
-        $cartToken = $request->cookie('cart_token');
+        [$userId, $cartToken] = $this->resolveCartOwner($request);
 
-        $deleted = CartModel::when($userId, fn($q) => $q->where('user_id', $userId))
-            ->when(!$userId, fn($q) => $q->where('cart_token', $cartToken))
+        $deleted = CartModel::query()
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken))
             ->where('product_id', $data['product_id'])
             ->delete();
 
@@ -194,7 +204,11 @@ $updated =0;
             return response()->json(['status' => 'error', 'message' => 'Item not found'], 404);
         }
 
-        return response()->json(['status' => 'success', 'message' => 'Item removed successfully'], 200);
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Item removed successfully',
+            'count'   => $this->cartCount($userId, $cartToken),
+        ], 200);
     }
 
     /**
@@ -202,22 +216,39 @@ $updated =0;
      */
     public function clearCart(Request $request)
     {
-        $userId = auth()->id();
-        $cartToken = $request->cookie('cart_token');
+        [$userId, $cartToken] = $this->resolveCartOwner($request);
 
-        $deleted = CartModel::when($userId, fn($q) => $q->where('user_id', $userId))
-            ->when(!$userId, fn($q) => $q->where('cart_token', $cartToken))
+        $deleted = CartModel::query()
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken))
             ->delete();
 
         return response()->json([
             'status'  => 'success',
             'message' => 'Cart cleared successfully',
-            'deleted' => $deleted
+            'deleted' => $deleted,
+            'count'   => 0,
         ], 200);
     }
-    public function loadCartView(Request $request){
-        dd('hii');
 
+    /**
+     * Render the cart view/modal contents for a given cart.
+     * NOTE: was previously a debug stub (`dd('hii')`).
+     */
+    public function loadCartView(Request $request, $cart_id = null)
+    {
+        $userId    = auth()->id();
+        $cartToken = $request->cookie('cart_token');
+
+        $cartItems = CartModel::query()
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken))
+            ->with('product.images') // images needed by the cart_items partial
+            ->get();
+
+        return view('website.main.partials.cart', [
+            'cartItems' => $cartItems,
+            'count'     => (int) $cartItems->sum('quantity'),
+        ]);
     }
 }
-          

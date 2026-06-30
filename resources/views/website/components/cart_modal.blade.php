@@ -5,7 +5,7 @@
       <!-- Header -->
       <div class="modal-header">
         <h5 class="modal-title" id="cart_modal_label">Cart Contents</h5>
-        <button type="button" class="btn-close bg-danger" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
 
       <!-- Body -->
@@ -30,16 +30,22 @@
                       <div class="col-lg-2 text-center">Total</div>
                     </div>
                   </div>
-                                     <form method ='post' name='update_cart' id='update_cart_form'  action="{{route('api.cart.update')}}" >
-                      @csrf
 
-                  <div id="cart_items_container">
-                    
+                  <form method="post" name="update_cart" id="update_cart_form" action="{{ route('api.cart.update') }}">
+                    @csrf
 
+                    {{-- Server-rendered on first paint via the cart_items partial
+                         (same one CartController::loadCartView() uses), so there's
+                         no "Loading cart…" flash. inner.js's CheckoutContent()
+                         takes over and rewrites this container after any
+                         add/update/remove action, since those happen without a
+                         full page reload. $cartItems is supplied by the
+                         ComposeCartModal view composer — see AppServiceProvider. --}}
+                    <div id="cart_items_container">
+                        @include('website.main.partials.cart_items', ['cartItems' => $cartItems ?? collect()])
+                    </div>
+                  </form>
 
-
-                  </div>
-</form>
                 </div>
               </div>
 
@@ -90,16 +96,14 @@
                         data-purecounter-duration="1">
                     </span>
                   </div>
-                  <div id ="remove_pay">
-                  <a href="#" class="btn btn-accent w-100 mb-2 cart_update" data-info ="checkout">Proceed to Checkout</a>
-                  <a href="#" class="btn  w-100 cart_update" data-info ="continue">
-                    <i class="bi bi-arrow-left btn "></i> Continue Shopping
-                  </a>
-</div>
-                </div>
 
-                 
-                    
+                  <div id="remove_pay">
+                    <a href="#" class="btn btn-dark w-100 mb-2 cart_update" data-info="checkout">Proceed to Checkout</a>
+                    <a href="#" class="btn btn-outline-dark w-100 cart_update" data-info="continue">
+                      <i class="bi bi-arrow-left"></i> Continue Shopping
+                    </a>
+                  </div>
+
                 </div>
               </div>
 
@@ -112,7 +116,7 @@
 
       <!-- Footer -->
       <div class="modal-footer">
-        <button type="button" class="btn btn-danger rounded" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-outline-dark" data-bs-dismiss="modal">Close</button>
       </div>
 
     </div>
