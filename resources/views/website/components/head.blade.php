@@ -1,7 +1,7 @@
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>Ecommerce</title>
+  <title>Slayshaper</title>
 <meta name="author" content="SlayShaper">
 <meta name="robots" content="index, follow">
 <meta name="language" content="English">
@@ -21,7 +21,7 @@
 <meta name="twitter:description" content="Shop trendy fashion, clothing, shoes, bags, and accessories with worldwide delivery from Nigeria.">
 <meta name="twitter:image" content="{{ asset('assets/images/logo.png') }}">
   <!-- Favicons -->
-  <link href="{{ asset('assets/img/favicon.png') }}" rel="icon">
+  <link href="{{ asset('assets/images/logo.png') }}" rel="icon">
   <link href="{{ asset('assets/img/apple-touch-icon.png') }}" rel="apple-touch-icon">
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com" rel="preconnect">
