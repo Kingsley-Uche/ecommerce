@@ -132,8 +132,8 @@ function getCookie(name) {
 /* --------------------------------------------
    ADD BUTTON EVENT LISTENERS
 -------------------------------------------- */
-document.querySelectorAll('.form_button').forEach(btn => {
-    btn.addEventListener('click', Processform);
+document.querySelectorAll("form").forEach(form => {
+    form.addEventListener("submit", Processform);
 });
 
 
