@@ -64,12 +64,17 @@ public function initiatePay(Request $request)
     // --------------------------
     // 3. FETCH & VALIDATE CART
     // --------------------------
-    $cartItems = CartModel::with('product:id,name,price')
-        ->when($userId, fn($q) => $q->where('user_id', $userId))
-        ->when(!$userId, fn($q) => $q->where('cart_token', $cartToken))
-        ->whereIn('product_id', array_map('intval', $data['product_id']))
-        ->get();
-
+   $cartItems = CartModel::with('product:id,name,price')
+    ->where(function ($query) use ($userId, $cartToken) {
+        if ($userId) {
+            $query->where('user_id', $userId)
+                  ->orWhere('cart_token', $cartToken);
+        } else {
+            $query->where('cart_token', $cartToken);
+        }
+    })
+    ->whereIn('product_id', array_map('intval', $data['product_id']))
+    ->get();
     if ($cartItems->isEmpty()) {
         return response()->json([
             'status'  => 'error',
