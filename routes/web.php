@@ -17,7 +17,7 @@ Route::get('/login', [AdminController::class, 'showLoginform'])->name('login');
 Route::post('/payment/initiate', [TransactionController::class, 'initiatePay'])->name('payment.initiate');
 Route::get('/payment/checkout/{cart_token}', [TransactionController::class, 'checkout'])->name('payment.checkout');
 Route::post('/payment/checkout', [TransactionController::class, 'initiatePay'])->name('checkout.submit');
-
+Route::get('/product/{id}', [WebsiteController::class, 'ViewProduct'])->name('product.show');
 Route::get('/get/category/products/{category_id}', [WebsiteController::class, 'getproductsByCategory'])->name('category.products');
 
 Route::prefix('cart')->group(function () {

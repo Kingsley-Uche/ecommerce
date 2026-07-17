@@ -483,7 +483,7 @@ button { font-family: inherit; }
                             </div>
 
                             <p class="pc-name">
-                                <a href="{{ url('/product/' . \Illuminate\Support\Str::slug($product['name'])) }}">
+                                <a href="{{ url('/product/' . \Illuminate\Support\Str::slug($product['id'])) }}">
                                     {{ \Illuminate\Support\Str::limit($product['name'], 48) }}
                                 </a>
                             </p>

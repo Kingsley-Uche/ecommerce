@@ -173,4 +173,22 @@ class WebsiteController extends Controller
         return view('website.main.pages.products_by_category', compact('products', 'category', 'category_id'))
             ->with('shop_data', $this->shop_data);
     }
+    public function ViewProduct(Request $request, $id)
+{
+    $product = ProductModel::with(['images'])->findOrFail((int) $id);
+
+    // Find the first active category this product belongs to (breadcrumb + eyebrow)
+    $categoryAssignment = \App\Models\CategoryAssign::with('category:id,name')
+        ->where('product_id', $product->id)
+        ->first();
+
+    $category = $categoryAssignment?->category;
+
+    return view('website.main.pages.view_product', [
+        'shop_data' => $this->shop_data,
+        'product'   => $product,
+        'category'  => $category,
+    ]);
+}
+
 }

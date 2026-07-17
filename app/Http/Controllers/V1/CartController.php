@@ -48,6 +48,7 @@ class CartController extends Controller
         $validator = Validator::make($request->all(), [
             'product_id' => 'required|integer',
             'quantity'   => 'required|integer|min:1',
+            'size'       => 'nullable|string|max:10',
         ]);
 
         if ($validator->fails()) {
@@ -65,10 +66,14 @@ class CartController extends Controller
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken));
 
-        $existing = $query->where('product_id', $data['product_id'])->first();
+        // Match on both product_id AND size — the same product in different
+        // sizes should be treated as separate cart line items
+        $existing = $query
+            ->where('product_id', $data['product_id'])
+            ->where('size', $data['size'] ?? null)
+            ->first();
 
         if ($existing) {
-            // Item already in cart: bump the quantity instead of rejecting the add
             $existing->update([
                 'quantity' => $existing->quantity + $data['quantity'],
             ]);
@@ -86,6 +91,7 @@ class CartController extends Controller
             'cart_token' => $cartToken,
             'product_id' => $data['product_id'],
             'quantity'   => $data['quantity'],
+            'size'       => $data['size'] ?? null,
         ]);
 
         return response()->json([
@@ -97,7 +103,7 @@ class CartController extends Controller
     }
 
     /**
-     * Update the quantity of one or more products in the cart.
+     * Update the quantity (and optionally size) of one or more cart items.
      * Setting quantity to 0 removes that item.
      */
     public function update(Request $request)
@@ -107,6 +113,8 @@ class CartController extends Controller
             'product_id.*' => 'required|integer',
             'quantity'     => 'required|array',
             'quantity.*'   => 'required|integer|min:0',
+            'size'         => 'sometimes|array',
+            'size.*'       => 'nullable|string|max:10',
         ]);
 
         [$userId, $cartToken] = $this->resolveCartOwner($request);
@@ -132,18 +140,60 @@ class CartController extends Controller
                 continue;
             }
 
-            $newQty = $data['quantity'][$index];
+            $newQty  = $data['quantity'][$index];
+            $newSize = $data['size'][$index] ?? $item->size;
 
             if ($newQty === 0) {
                 $item->delete();
             } else {
-                $item->update(['quantity' => $newQty]);
+                $item->update([
+                    'quantity' => $newQty,
+                    'size'     => $newSize,
+                ]);
             }
         }
 
         return response()->json([
             'status'  => 'success',
             'message' => 'Cart updated successfully',
+            'count'   => $this->cartCount($userId, $cartToken),
+        ], 200);
+    }
+
+    /**
+     * Update only the size of a single cart item.
+     * Called by the size-selector dropdown via AJAX (window.CART_SIZE_URL).
+     * Route: POST /cart/size  →  name: cart.update.size
+     */
+    public function updateSize(Request $request)
+    {
+        $data = $request->validate([
+            'cart_item_id' => 'required|integer',
+            'product_id'   => 'required|integer',
+            'size'         => 'required|string|max:10',
+        ]);
+
+        [$userId, $cartToken] = $this->resolveCartOwner($request);
+
+        $item = CartModel::query()
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken))
+            ->where('id', $data['cart_item_id'])
+            ->where('product_id', $data['product_id'])
+            ->first();
+
+        if (!$item) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Cart item not found',
+            ], 404);
+        }
+
+        $item->update(['size' => $data['size']]);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Size updated',
             'count'   => $this->cartCount($userId, $cartToken),
         ], 200);
     }
@@ -231,10 +281,7 @@ class CartController extends Controller
         ], 200);
     }
 
-    /**
-     * Render the cart view/modal contents for a given cart.
-     * NOTE: was previously a debug stub (`dd('hii')`).
-     */
+    
     public function loadCartView(Request $request, $cart_id = null)
     {
         $userId    = auth()->id();
@@ -243,7 +290,7 @@ class CartController extends Controller
         $cartItems = CartModel::query()
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken))
-            ->with('product.images') // images needed by the cart_items partial
+            ->with('product.images')
             ->get();
 
         return view('website.main.partials.cart', [

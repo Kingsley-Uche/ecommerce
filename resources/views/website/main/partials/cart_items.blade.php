@@ -1,21 +1,16 @@
 {{--
     website/main/partials/cart_items.blade.php
 
-    Just the rows — no #cart_items_container wrapper, no page chrome.
-    This is the single source of truth for what a cart item row looks
-    like; both the full cart page (cart.blade.php) and the cart modal
-    (cart_modal.blade.php) @include this directly so the markup never
-    drifts out of sync between the two.
+    Single source of truth for cart row markup.
+    Used by cart.blade.php (full page) and cart_modal.blade.php (modal).
 
     Expects:
       $cartItems → Collection of CartModel, each with ->product eager loaded
                    (product has: id, name, description, price, images)
+      $count     → int, total quantity across cart
 
-    NOTE: inner.js's CheckoutContent() rebuilds this same markup shape
-    client-side after quantity/remove actions (since those don't reload
-    the page). If you change this file's structure, update
-    CheckoutContent() in inner.js to match, or the post-update DOM will
-    look different from the initial server-rendered state.
+    Column layout (12 cols total):
+      Product  4 | Size  2 | Price  2 | Qty  2 | Total  1 | Remove  1
 --}}
 
 @if($cartItems->isEmpty())
@@ -30,44 +25,82 @@
 
     @foreach($cartItems as $item)
         @php
-            $product = $item->product;
-            $price   = (float) ($product->price ?? 0);
-            $qty     = (int) $item->quantity;
-            $total   = $price * $qty;
-            $image   = $product->images->first()->image_path ?? null;
+            $product      = $item->product;
+            $price        = (float) ($product->price ?? 0);
+            $qty          = (int) $item->quantity;
+            $total        = $price * $qty;
+            $image        = $product->images->first()->image_path ?? null;
+            $selectedSize = $item->size ?? '';   // ← read from the DB row
         @endphp
 
-        <div class="cart-item border-bottom py-3" data-product-id="{{ $product->id ?? '' }}">
-            <div class="row align-items-center">
+        <div class="cart-item border-bottom py-3"
+             data-product-id="{{ $product->id ?? '' }}">
 
-                {{-- Product --}}
-                <div class="col-lg-5 col-12 mb-2 mb-lg-0">
-                    <div class="product-info d-flex align-items-center">
+            <div class="row align-items-center g-1">
+
+                {{-- Product (image + name + description) — col 4 --}}
+                <div class="col-lg-4 col-12 mb-2 mb-lg-0">
+                    <div class="product-info d-flex align-items-center gap-2">
                         <img
-                            src="{{ $image ? asset('storage/' . $image) : asset('assets/img/default-product.png') }}"
+                            src="{{ $image
+                                ? asset('storage/' . $image)
+                                : asset('assets/img/default-product.png') }}"
                             alt="{{ $product->name ?? 'Product' }}"
-                            width="70"
-                            class="img-fluid me-3 rounded"
-                            style="object-fit: contain; height: 70px;"
+                            width="60"
+                            class="img-fluid rounded flex-shrink-0"
+                            style="object-fit: contain; height: 60px;"
                         >
                         <div>
-                            <h6 class="mb-1">{{ $product->name ?? 'Unknown product' }}</h6>
+                            <h6 class="mb-0 small fw-semibold">
+                                {{ $product->name ?? 'Unknown product' }}
+                            </h6>
                             @if(!empty($product->description))
-                                <small class="text-muted">{{ \Illuminate\Support\Str::limit($product->description, 60) }}</small>
+                                <small class="text-muted">
+                                    {{ \Illuminate\Support\Str::limit($product->description, 50) }}
+                                </small>
                             @endif
                         </div>
                     </div>
                 </div>
 
-                {{-- Price --}}
-                <div class="col-lg-2 col-4 text-center">
-                    <span class="current-price"><strong>₦{{ number_format($price, 2) }}</strong></span>
+                {{-- Size — col 2
+                     Pre-selects whatever size is stored on $item->size.
+                     Sends size[] in the update form so CartController::update()
+                     can persist the chosen size back to the DB.                --}}
+                <div class="col-lg-2 col-4 text-center mb-2 mb-lg-0">
+                    <label class="form-label small text-muted d-block d-lg-none mb-0">Size</label>
+                    <select
+                        name="size[]"
+                        class="form-select form-select-sm size-selector"
+                        data-product-id="{{ $product->id ?? '' }}"
+                        data-cart-item-id="{{ $item->id ?? '' }}"
+                    >
+                        <option value=""  {{ $selectedSize === ''   ? 'selected' : '' }}>— Size —</option>
+                        <option value="XS" {{ $selectedSize === 'XS'  ? 'selected' : '' }}>XS</option>
+                        <option value="S"  {{ $selectedSize === 'S'   ? 'selected' : '' }}>S</option>
+                        <option value="M"  {{ $selectedSize === 'M'   ? 'selected' : '' }}>M</option>
+                        <option value="L"  {{ $selectedSize === 'L'   ? 'selected' : '' }}>L</option>
+                        <option value="XL" {{ $selectedSize === 'XL'  ? 'selected' : '' }}>XL</option>
+                        <option value="XXL"{{ $selectedSize === 'XXL' ? 'selected' : '' }}>XXL</option>
+                    </select>
                 </div>
 
-                {{-- Quantity --}}
-                <div class="col-lg-2 col-4 text-center">
+                {{-- Price — col 2 --}}
+                <div class="col-lg-2 col-4 text-center mb-2 mb-lg-0">
+                    <label class="form-label small text-muted d-block d-lg-none mb-0">Price</label>
+                    <span class="current-price">
+                        <strong>₦{{ number_format($price, 2) }}</strong>
+                    </span>
+                </div>
+
+                {{-- Quantity — col 2 --}}
+                <div class="col-lg-2 col-4 text-center mb-2 mb-lg-0">
+                    <label class="form-label small text-muted d-block d-lg-none mb-0">Qty</label>
                     <div class="quantity-selector d-flex align-items-center justify-content-center gap-1">
-                        <button type="button" class="quantity-btn decrease btn btn-sm btn-outline-dark" data-price="{{ $price }}">
+
+                        <button type="button"
+                                class="quantity-btn decrease btn btn-sm btn-outline-dark"
+                                data-price="{{ $price }}">
                             <i class="bi bi-dash"></i>
                         </button>
 
@@ -77,28 +110,34 @@
                             value="{{ $qty }}"
                             min="1"
                             name="quantity[]"
-                            style="width: 56px;"
+                            style="width: 52px;"
                         >
-                        <input type="hidden" name="initial_quantity[]" value="{{ $qty }}">
-                        <input type="hidden" name="product_id[]" value="{{ $product->id ?? '' }}">
-                        <input type="hidden" name="total" value="{{ number_format($total, 2, '.', '') }}">
 
-                        <button type="button" class="quantity-btn increase btn btn-sm btn-outline-dark" data-price="{{ $price }}">
+                        {{-- Hidden fields read by CartController::update() --}}
+                        <input type="hidden" name="initial_quantity[]" value="{{ $qty }}">
+                        <input type="hidden" name="product_id[]"       value="{{ $product->id ?? '' }}">
+                        <input type="hidden" name="total"              value="{{ number_format($total, 2, '.', '') }}">
+
+                        <button type="button"
+                                class="quantity-btn increase btn btn-sm btn-outline-dark"
+                                data-price="{{ $price }}">
                             <i class="bi bi-plus"></i>
                         </button>
+
                     </div>
                 </div>
 
-                {{-- Line total --}}
-                <div class="col-lg-2 col-3 text-center item-total">
+                {{-- Line total — col 1 --}}
+                <div class="col-lg-1 col-2 text-center item-total">
+                    <label class="form-label small text-muted d-block d-lg-none mb-0">Total</label>
                     <strong>₦{{ number_format($total, 2) }}</strong>
                 </div>
 
-                {{-- Remove --}}
-                <div class="col-lg-1 col-1 text-center">
+                {{-- Remove — col 1 --}}
+                <div class="col-lg-1 col-2 text-center">
                     <button
                         type="button"
-                        class="remove-item btn btn-sm btn-link text-danger p-0"
+                        class="remove-item btn btn-sm btn-link text-danger p-0 mt-lg-0 mt-2"
                         data-product-id="{{ $product->id ?? '' }}"
                         aria-label="Remove {{ $product->name ?? 'item' }}"
                     >

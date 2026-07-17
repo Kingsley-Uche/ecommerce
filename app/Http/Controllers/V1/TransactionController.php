@@ -10,6 +10,7 @@ use App\Models\StoreDetailsModel;
 use App\Models\Orders;
 use Illuminate\Support\Facades\Validator;
 use Exception;
+use Illuminate\Support\Facades\Log;
 
 
 class TransactionController extends Controller
@@ -194,9 +195,10 @@ public function initiatePay(Request $request)
         ]);
 
     } catch (\Exception $e) {
+          Log::error('Payment initialization error: ' . $e->getMessage());
         return response()->json([
             'status'  => 'error',
-            'message' => 'Payment initialization error: ' . $e->getMessage(),
+            'message' => 'Payment initialization failed: ',
         ], 500);
     } finally {
         curl_close($ch);

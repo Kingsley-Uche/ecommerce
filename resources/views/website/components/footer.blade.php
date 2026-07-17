@@ -106,7 +106,7 @@
               <!-- All the links in the footer should remain intact. -->
               <!-- You can delete the links only if you've purchased the pro version. -->
               <!-- Licensing information: https://bootstrapmade.com/license/ -->
-              Designed by <a href="https://www.linkedin.com/in/olekamma-kingsley-90a776128/">Kammasoft Technologies</a>
+              Designed by <a href="https://bootstrapmade.com/">BootstrapMade</a>
             </div>
           </div>
 
@@ -158,18 +158,20 @@
 
   <!-- Globals needed by cart-remove-patches.js — must be defined before it loads -->
   <script>
-    const CART_ADD_URL = "{{ route('api.cart.add') }}";
-    window.CART_REMOVE_URL = "{{ route('api.cart.remove') }}";
+    const CART_ADD_URL      = "{{ route('api.cart.add') }}";
+    window.CART_REMOVE_URL  = "{{ route('api.cart.remove') }}";
+    window.CART_SIZE_URL    = "{{ route('cart.update.size') }}";
   </script>
 
   <!-- Main JS File -->
   <script src="{{ asset('assets/js/main.js') }}"></script>
   <script src="{{ asset('assets/js/inner.js') }}"></script>
-  <script src="{{ asset('assets/js/inner-patches.js') }}"></script>
+  <script src="{{ asset('assets/js/inner-patche.js') }}"></script>
+  <script src="{{ asset('assets/js/inner-checkout-patch.js') }}"></script>
   <script src="{{ asset('assets/js/payment.js') }}"></script>
   <script src="{{ asset('assets/js/cart-modal-patches.js') }}"></script>
   <script src="{{ asset('assets/js/cart-remove-patches.js') }}"></script>
 
   <div id="loadingSpinner">
-    <div class="spinner">SlayShaper</div>
+    <div class="spinner"></div>
   </div>

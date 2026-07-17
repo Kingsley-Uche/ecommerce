@@ -12,7 +12,7 @@ Route::post('/cart/update', [CartController::class, 'update'])->name('api.cart.u
 // name + this binding call `remove` — controller has been renamed to `remove`
 // to match. If you'd rather keep `removeItem`, change this line instead.
 Route::delete('/cart/remove', [CartController::class, 'remove'])->name('api.cart.remove');
-
+Route::post('/cart/size', [CartController::class, 'updateSize'])->name('cart.update.size');
 Route::post('/cart', [CartController::class, 'getCart'])->name('api.cart.get');
 Route::post('/payment/verify', [TransactionController::class, 'verifyPay'])->name('payment.verify');
 

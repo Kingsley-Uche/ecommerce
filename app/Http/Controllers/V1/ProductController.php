@@ -223,4 +223,5 @@ public function updateProduct(Request $request, int $id)
 
     return back()->with('success', 'Image deleted successfully');
 }
+
 }

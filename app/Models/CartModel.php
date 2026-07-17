@@ -12,6 +12,7 @@ class CartModel extends Model
         'cart_token',
         'product_id',
         'quantity',
+        'size',
         'cart_status',
     ];
     
