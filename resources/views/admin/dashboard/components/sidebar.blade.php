@@ -2,30 +2,15 @@
 
     <div data-simplebar class="h-100">
 
-        <div class="user-profile text-center mt-3">
-            <div>
-                <img src="assets/images/users/avatar-1.jpg" alt="" class="avatar-md rounded-circle">
-            </div>
-            <div class="mt-3">
-                <h4 class="font-size-16 mb-1">Julia Hudda</h4>
-                <span class="text-muted">
-                    <i class="ri-record-circle-line align-middle font-size-14 text-success"></i>
-                    Online
-                </span>
-            </div>
-        </div>
-
         <div id="sidebar-menu">
             <ul class="metismenu list-unstyled" id="side-menu">
 
-                <li class="menu-title">Menu</li>
-
-                <li>
-                    <a href="{{ route('admin.dashboard') }}" class="waves-effect">
-                        <i class="ri-dashboard-3-line"></i>
-                        <span>Dashboard</span>
-                    </a>
-                </li>
+              <li>
+    <a href="{{ route('admin.dashboard') }}" class="waves-effect">
+        <i class="ri-dashboard-line"></i>
+        <span>Dashboard</span>
+    </a>
+</li>
 
                 <li>
                     <a href="javascript:void(0);" class="has-arrow waves-effect">
