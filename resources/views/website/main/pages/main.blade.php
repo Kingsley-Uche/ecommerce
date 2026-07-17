@@ -290,11 +290,11 @@ button { font-family: inherit; }
     color: var(--paper);
     border: none;
     font-family: var(--font-mono);
-    font-size: .7rem;
+    font-size: .5rem;
     font-weight: 600;
     letter-spacing: .08em;
     text-transform: uppercase;
-    padding: .55rem .9rem;
+    padding: .44rem .7rem;
     cursor: pointer;
     transition: background .2s var(--ease);
 }
@@ -302,6 +302,25 @@ button { font-family: inherit; }
 .add-cart-btn:disabled { background: var(--ink-soft); cursor: not-allowed; }
 
 .cart-form { display: contents; }
+
+.details-btn {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: .5rem .75rem;
+    white-space: nowrap;
+    transition: border-color .2s var(--ease), color .2s var(--ease);
+    display: inline-block;
+}
+.details-btn:hover {
+    border-color: var(--clay);
+    color: var(--clay);
+}
 
 /* ============================================================
    FOOTER  — built from real shop_data only
@@ -418,7 +437,7 @@ button { font-family: inherit; }
             @endif
         </div>
     </header>
-  
+
     {{-- ====================================================
          INDEX — categories ordered by priority, as a TOC
          ==================================================== --}}
@@ -474,19 +493,26 @@ button { font-family: inherit; }
                                 {{ $stockLabel }}
                             </div>
 
-                            <div class="pc-image">
+                            <a href="{{ route('product.show', ['id' => $product['id']]) }}"
+                               class="pc-image"
+                               style="display:flex;">
                                 @if($image)
                                     <img src="{{ asset('storage/' . $image) }}" alt="{{ $product['name'] }}" loading="lazy">
                                 @else
                                     <img src="{{ asset('assets/img/default-product.png') }}" alt="{{ $product['name'] }}" loading="lazy">
                                 @endif
-                            </div>
+                            </a>
 
-                            <p class="pc-name">
-                                <a href="{{ url('/product/' . \Illuminate\Support\Str::slug($product['id'])) }}">
-                                    {{ \Illuminate\Support\Str::limit($product['name'], 48) }}
-                                </a>
-                            </p>
+                            {{-- Product name — links to dedicated product page --}}
+                            <a href="{{ route('product.show', ['id' => $product['id']]) }}"
+                               class="pc-name"
+                               style="display:block;">
+                                {{ \Illuminate\Support\Str::limit($product['name'], 48) }}
+                                <span style="display:inline-block;margin-left:.4rem;font-size:.68rem;
+                                             font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+                                             color:var(--clay);border-bottom:1px solid var(--clay-dim);
+                                             padding-bottom:1px;vertical-align:middle;">View →</span>
+                            </a>
 
                             @if(!empty($product['description']))
                                 <p class="pc-desc">{{ \Illuminate\Support\Str::limit($product['description'], 80) }}</p>
@@ -495,15 +521,26 @@ button { font-family: inherit; }
                             <div class="pc-bottom">
                                 <span class="pc-price">₦{{ number_format($product['price'], 2) }}</span>
 
-                                <form method="post" action="{{ route('api.cart.add') }}" class="cart-form">
-                                    @csrf
-                                    <input type="hidden" name="product_name" value="{{ $product['name'] }}">
-                                    <input type="hidden" name="product_id" value="{{ $product['id'] }}">
-                                    <input type="hidden" name="quantity" value="1">
-                                    <button type="submit" class="add-cart-btn" {{ $stock <= 0 ? 'disabled' : '' }}>
-                                        {{ $stock <= 0 ? 'Sold out' : 'Add to cart' }}
-                                    </button>
-                                </form>
+                                <div style="display:flex;gap:.5rem;align-items:center;">
+                                    {{-- Details link — takes user to the full product page --}}
+                                    <a href="{{ route('product.show', ['id' => $product['id']]) }}"
+                                       class="details-btn">
+                                        Details
+                                    </a>
+
+                                    {{-- Add to cart --}}
+                                    <form method="post" action="{{ route('api.cart.add') }}" class="cart-form">
+                                        @csrf
+                                        <input type="hidden" name="product_name" value="{{ $product['name'] }}">
+                                        <input type="hidden" name="product_id"   value="{{ $product['id'] }}">
+                                        <input type="hidden" name="quantity"     value="1">
+                                        <button type="submit"
+                                                class="add-cart-btn form_button"
+                                                {{ $stock <= 0 ? 'disabled' : '' }}>
+                                            {{ $stock <= 0 ? 'Sold out' : 'Add to cart' }}
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     @endforeach
