@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Log;
 class TransactionController extends Controller
 {
 
+
+private string $paystack_secret;
 public function initiatePay(Request $request)
 {
     // --------------------------
@@ -125,7 +127,6 @@ public function initiatePay(Request $request)
     // 7. GENERATE PAYMENT REF
     // --------------------------
     $payment_ref = $this->generateRef($shop->store_name);
-
     // --------------------------
     // 8. INIT PAYSTACK
     // --------------------------
@@ -141,7 +142,7 @@ public function initiatePay(Request $request)
                 'reference' => $payment_ref,
             ]),
             CURLOPT_HTTPHEADER     => [
-                "Authorization: Bearer " . env("PAYMENTBEARER"),
+               "Authorization:Bearer " .config('services.paystack_secret'),
                 "Cache-Control: no-cache"
             ],
             CURLOPT_RETURNTRANSFER => true,
@@ -195,7 +196,7 @@ public function initiatePay(Request $request)
         ]);
 
     } catch (\Exception $e) {
-          Log::error('Payment initialization error: ' . $e->getMessage());
+          Log::error(['Payment initialization error: ' . $e->getMessage(), 'secret'=> config('services.paystack_secret')]);
         return response()->json([
             'status'  => 'error',
             'message' => 'Payment initialization failed: ',
@@ -291,7 +292,7 @@ if($userId && $cartToken){
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT => 30,
     CURLOPT_HTTPHEADER => [
-        "Authorization: Bearer " . env("PAYMENTBEARER"),
+        "Authorization: Bearer " . config('services.paystack.secret'),
         "Cache-Control: no-cache"
     ],
 ]);
