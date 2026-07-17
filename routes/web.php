@@ -10,6 +10,8 @@ use App\Http\Controllers\V1\WebsiteController;
 use App\Http\Controllers\V1\CartController;
 use App\Http\Controllers\V1\CategoryAssignController;
 use App\Http\Controllers\V1\TransactionController;
+use App\Http\Controllers\V1\OrderController;
+
 
 Route::get('/', [WebsiteController::class, 'index'])->name('home');
 Route::post('/', [WebsiteController::class, 'search'])->name('product-search');
@@ -75,7 +77,9 @@ Route::prefix('admin')->group(function () {
             Route::get('/show', [StoreDetailsController::class, 'show'])->name('admin.store_details.show');
             Route::get('/create', [StoreDetailsController::class, 'loadCreateForm'])->name('admin.store_details.create');
         });
-
+        Route::get('/orders',              [OrderController::class, 'orders'])->name('admin.orders.index');
+        Route::get('/orders/{id}',         [OrderController::class, 'show'])->name('admin.orders.show');
+        Route::put('/orders/{id}/status',  [OrderController::class, 'updateStatus'])->name('admin.orders.status');
         Route::get('/store/frontpage', [StoreDetailsController::class, 'loadEditFrontPage'])->name('admin.store_front_page.index');
         Route::post('/store/frontpage/update', [StoreDetailsController::class, 'updateFrontPage'])->name('admin.store_front_page.update');
         Route::get('/store/frontpage/create', [StoreDetailsController::class, 'loadFrontpage'])->name('admin.store_front_page.create');
