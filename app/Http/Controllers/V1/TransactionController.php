@@ -292,7 +292,7 @@ if($userId && $cartToken){
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT => 30,
     CURLOPT_HTTPHEADER => [
-        "Authorization: Bearer " . config('services.paystack.secret'),
+        "Authorization:Bearer " .config('services.paystack_secret'),
         "Cache-Control: no-cache"
     ],
 ]);
