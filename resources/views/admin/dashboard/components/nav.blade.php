@@ -5,20 +5,26 @@
             <div class="navbar-brand-box">
                 <a href="{{ route('admin.dashboard') }}" class="logo logo-dark">
                     <span class="logo-sm">
-                        <img src="{{ asset('admin-assets/images/logo-sm.png') }}" alt="logo-sm" height="22">
-                    </span>
+                         @if(!empty($shop_data['logo_path']))
+              <img src="{{ asset('storage/' . $shop_data['logo_path']) }}" alt="{{ $shop_data['store_name'] ?? 'Store' }}" class="logo-img me-2">
+            @endif
                     <span class="logo-lg">
-                        <img src="{{ asset('admin-assets/images/logo-dark.png') }}" alt="logo-dark" height="20">
+                       @if(!empty($shop_data['logo_path']))
+              <img src="{{ asset('storage/' . $shop_data['logo_path']) }}" alt="{{ $shop_data['store_name'] ?? 'Store' }}" class="logo-img me-2">
+            @endif
                     </span>
                 </a>
 
                 <a href="{{ route('admin.dashboard') }}" class="logo logo-light">
                     <span class="logo-sm">
-                        <img src="{{ asset('admin-assets/images/logo-sm.png') }}" alt="logo-sm-light" height="22">
+                        @if(!empty($shop_data['logo_path']))
+              <img src="{{ asset('storage/' . $shop_data['logo_path']) }}" alt="{{ $shop_data['store_name'] ?? 'Store' }}" class="logo-img me-2">
+            @endif
                     </span>
                     <span class="logo-lg">
-                        <img src="{{ asset('admin-assets/images/logo-light.png') }}" alt="logo-light" height="20">
-                    </span>
+                         @if(!empty($shop_data['logo_path']))
+              <img src="{{ asset('storage/' . $shop_data['logo_path']) }}" alt="{{ $shop_data['store_name'] ?? 'Store' }}" class="logo-img me-2">
+            @endif
                 </a>
             </div>
 

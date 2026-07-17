@@ -11,7 +11,24 @@
         <span>Dashboard</span>
     </a>
 </li>
+<!-- LOGO -->
+<div class="navbar-brand-box">
+    <a href="{{ route('admin.dashboard') }}" class="logo logo-dark">
+        <span class="logo-lg">
+           @if(!empty($shop_data['logo_path']))
+              <img src="{{ asset('storage/' . $shop_data['logo_path']) }}" alt="{{ $shop_data['store_name'] ?? 'Store' }}" class="logo-img me-2">
+            @endif
+        </span>
+    </a>
 
+    <a href="{{ route('admin.dashboard') }}" class="logo logo-light">
+        <span class="logo-lg">
+            @if(!empty($shop_data['logo_path']))
+              <img src="{{ asset('storage/' . $shop_data['logo_path']) }}" alt="{{ $shop_data['store_name'] ?? 'Store' }}" class="logo-img me-2">
+            @endif
+        </span>
+    </a>
+</div>
                 <li>
                     <a href="javascript:void(0);" class="has-arrow waves-effect">
                         <i class="ri-price-tag-3-line"></i>
