@@ -146,7 +146,8 @@
       <div class="container-fluid container-xl position-relative">
         <nav id="navmenu" class="navmenu">
           <ul>
-            <li><a href="{{ route('home') }}">Home</a></li>
+            <li ><a href="{{ route('home') }}">Home</a></li>
+             <li class="rounded-pill bg-warning m-2"><a href="{{ route('size-guide')}}" class='text-dark'>Size Guide</a></li>
 
             @if(isset($product_categ) && count($product_categ))
               @foreach($product_categ as $catId => $cat)
