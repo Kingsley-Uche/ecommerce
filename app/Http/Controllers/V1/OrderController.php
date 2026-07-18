@@ -5,6 +5,7 @@ namespace App\Http\Controllers\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Orders;
 use App\Models\ProductModel;
+use App\Models\ProductOrder;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
@@ -26,15 +27,23 @@ public function show($id)
 {
     $order = Orders::findOrFail($id);
 
-    $productIds = json_decode($order->product_id, true);
-
-    $products = ProductModel::whereIn('id', $productIds)
-        ->select('id', 'name', 'price')
+    $product_order = ProductOrder::where('order_id', $order->id)
+        ->with([
+            'product:id,name,price'
+        ])
+        ->select(
+            'id',
+            'order_id',
+            'product_id',
+            'qty_bought',
+            'size'
+        )
         ->get();
+
 
     return view(
         'admin.dashboard.pages.orders.show',
-        compact('order', 'products')
+        compact('order', 'product_order')
     );
 }
 

@@ -136,32 +136,89 @@
     <label class="text-muted small text-uppercase fw-semibold"
            style="letter-spacing:.05em;">Ordered Products</label>
 
-    @if($products->isNotEmpty())
-        <div class="table-responsive mt-2">
-            <table class="table table-sm table-bordered align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>#</th>
-                        <th>Product</th>
-                        <th class="text-end">Price</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($products as $index => $product)
-                        <tr>
-                            <td>{{ $index + 1 }}</td>
-                            <td>{{ $product->name }}</td>
-                            <td class="text-end">
-                                ₦{{ number_format($product->price, 2) }}
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
+  @if($product_order->isNotEmpty())
+
+<div class="table-responsive mt-2">
+
+<table class="table table-sm table-bordered align-middle mb-0">
+
+<thead class="table-light">
+<tr>
+    <th>#</th>
+    <th>Product</th>
+    <th>Size</th>
+    <th>Quantity</th>
+    <th class="text-end">Price</th>
+    <th class="text-end">Total</th>
+</tr>
+</thead>
+
+
+<tbody>
+
+@foreach($product_order as $index => $item)
+
+<tr>
+
+<td>
+    {{ $index + 1 }}
+</td>
+
+
+<td>
+    {{ $item->product->name ?? 'Product removed' }}
+</td>
+
+
+<td>
+    @if($item->size)
+        <span class="badge bg-info">
+            {{ strtoupper($item->size) }}
+        </span>
     @else
-        <p class="mb-0 text-muted">No products found.</p>
+        -
     @endif
+</td>
+
+
+<td>
+    {{ $item->qty_bought }}
+</td>
+
+
+<td class="text-end">
+    ₦{{ number_format($item->product->price ?? 0,2) }}
+</td>
+
+
+<td class="text-end fw-bold">
+
+    ₦{{ number_format(
+        ($item->product->price ?? 0) * $item->qty_bought,
+        2
+    ) }}
+
+</td>
+
+
+</tr>
+
+@endforeach
+
+
+</tbody>
+
+</table>
+
+</div>
+
+@else
+
+<p class="mb-0 text-muted">
+    No products found.
+</p>
+
+@endif
 </div>
                     <div class="col-sm-6">
                         <label class="text-muted small text-uppercase fw-semibold"

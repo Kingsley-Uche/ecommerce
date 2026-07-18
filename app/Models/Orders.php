@@ -22,6 +22,8 @@ class Orders extends Model
         'cart_token',
         'total_cost', 
         'total_paid',
+        'extra_information',
+        'paid_at',
         
     ];
 

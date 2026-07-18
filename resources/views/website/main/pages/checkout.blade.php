@@ -94,6 +94,14 @@
                            placeholder="e.g Abuja, Nigeria"
                            required>
                   </div>
+                  <div class="form-group">
+                    <label for="extra_information">Additional Information</label>
+                    <input type="text" class="form-control"
+                           name="extra_information" id="extra_information"
+                           placeholder="I need two red...">
+                  </div>
+                  
+
 
                 </div>
               </div>
@@ -129,6 +137,8 @@
               @foreach ($cartItems as $item)
                 <input type="hidden" name="product_id[]" value="{{ $item->product_id }}">
                 <input type="hidden" name="quantity[]" value="{{ $item->quantity }}">
+                 <input type="hidden" name="size[]" value="{{ $item->size }}">
+
               @endforeach
 
             </form>
