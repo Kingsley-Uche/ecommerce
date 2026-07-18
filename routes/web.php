@@ -21,7 +21,7 @@ Route::get('/payment/checkout/{cart_token}', [TransactionController::class, 'che
 Route::post('/payment/checkout', [TransactionController::class, 'initiatePay'])->name('checkout.submit');
 Route::get('/product/{id}', [WebsiteController::class, 'ViewProduct'])->name('product.show');
 Route::get('/get/category/products/{category_id}', [WebsiteController::class, 'getproductsByCategory'])->name('category.products');
-
+Route::get('/size-guide', [WebsiteController::class, 'sizeGuide'])->name('size-guide');
 Route::prefix('cart')->group(function () {
     // NOTE: loadCartView() reads the cart_token cookie, not {cart_id} from
     // the URL — the segment is accepted but currently unused server-side.

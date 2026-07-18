@@ -190,5 +190,10 @@ class WebsiteController extends Controller
         'category'  => $category,
     ]);
 }
-
+public function sizeGuide()
+{
+    return view('website.main.pages.size_guide', [
+        'shop_data' => $this->shop_data,
+    ]);
+}
 }

@@ -60,7 +60,7 @@
                 <li><a href="#">Order Status</a></li>
                 <li><a href="#">Shipping Info</a></li>
                 <li><a href="#">Returns &amp; Exchanges</a></li>
-                <li><a href="#">Size Guide</a></li>
+                <li><a href="{{ route('size-guide')}}">Size Guide</a></li>
                 <li><a href="#">Contact Us</a></li>
               </ul>
             </div>
