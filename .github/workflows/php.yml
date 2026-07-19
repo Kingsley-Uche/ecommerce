@@ -81,8 +81,9 @@ jobs:
             composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 
             echo "Replacing old frontend build..."
-            rm -rf /home/${{ secrets.SERVER_USER }}/public_html/build
-            mkdir -p /home/${{ secrets.SERVER_USER }}/public_html/build
+            echo "Replacing old frontend build..."
+
+            rm -rf /home/${{ secrets.SERVER_USER }}/public_html/build/*
             cp -a public/build/. /home/${{ secrets.SERVER_USER }}/public_html/build/
 
             echo "Refreshing storage symlink..."
