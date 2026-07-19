@@ -133,45 +133,47 @@
   </footer>
 
 
-  <!-- Scroll Top, Preloader -->
-  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
-  <div id="preloader"></div>
+  <!-- Scroll Top & Preloader -->
+<a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center">
+  <i class="bi bi-arrow-up-short"></i>
+</a>
+<div id="preloader"></div>
 
-  {{-- Cart modal — now contains #cart_items_container and order summary
-       so inner.js's CheckoutContent() / updateCartSummary() have somewhere
-       real to write to --}}
-  @include('website.components.cart_modal')
+@include('website.components.cart_modal')
 
-  <!-- Vendor JS Files -->
-  <script src="{{ asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-  <script src="{{ asset('assets/vendor/php-email-form/validate.js') }}"></script>
-  <script src="{{ asset('assets/vendor/swiper/swiper-bundle.min.js') }}"></script>
-  <script src="{{ asset('assets/vendor/aos/aos.js') }}"></script>
-  <script src="{{ asset('assets/vendor/glightbox/js/glightbox.min.js') }}"></script>
-  <script src="{{ asset('assets/vendor/drift-zoom/Drift.min.js') }}"></script>
-  <script src="{{ asset('assets/vendor/purecounter/purecounter_vanilla.js') }}"></script>
+<!-- === SCRIPTS - Carefully Ordered === -->
 
-  <!-- SweetAlert2 — required by toast() in swal-toast.js. Must load BEFORE
-       main.js / inner.js / payment.js since they call toast() on events. -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="{{ asset('assets/js/swal-toast.js') }}"></script>
+<!-- Bootstrap First (Very Important) -->
+<script src="{{ asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+<!-- === CRITICAL SCRIPTS === -->
+<script src="{{ asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 
-  <!-- Globals needed by cart-remove-patches.js — must be defined before it loads -->
-  <script>
-    const CART_ADD_URL      = "{{ route('api.cart.add') }}";
-    window.CART_REMOVE_URL  = "{{ route('api.cart.remove') }}";
-    window.CART_SIZE_URL    = "{{ route('cart.update.size') }}";
-  </script>
+<!-- Lazy Load Non-Critical Scripts -->
+<script src="{{ asset('assets/vendor/swiper/swiper-bundle.min.js') }}" defer></script>
+<script src="{{ asset('assets/vendor/aos/aos.js') }}" defer></script>
 
-  <!-- Main JS File -->
-  <script src="{{ asset('assets/js/main.js') }}"></script>
-  <script src="{{ asset('assets/js/inner.js') }}"></script>
-  <script src="{{ asset('assets/js/inner-patche.js') }}"></script>
-  <script src="{{ asset('assets/js/inner-checkout-patch.js') }}"></script>
-  <script src="{{ asset('assets/js/payment.js') }}"></script>
-  <script src="{{ asset('assets/js/cart-modal-patches.js') }}"></script>
-  <script src="{{ asset('assets/js/cart-remove-patches.js') }}"></script>
+<!-- Only load these if needed on this page -->
+<script src="{{ asset('assets/vendor/glightbox/js/glightbox.min.js') }}" defer></script>
+<script src="{{ asset('assets/vendor/drift-zoom/Drift.min.js') }}" defer></script>
 
-  <div id="loadingSpinner">
-    <div class="spinner"></div>
-  </div>
+<!-- SweetAlert + Your JS -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+<script src="{{ asset('assets/js/swal-toast.js') }}" defer></script>
+
+<script src="{{ asset('assets/js/main.js') }}"></script>
+<script src="{{ asset('assets/js/inner.js') }}"></script>
+
+<!-- Load these only if necessary on current page -->
+<script src="{{ asset('assets/js/payment.js') }}" defer></script>
+<script src="{{ asset('assets/js/cart-modal-patches.js') }}" defer></script>
+<script src="{{ asset('assets/js/cart-remove-patches.js') }}" defer></script>
+
+<!-- Globals -->
+<script>
+  const CART_ADD_URL = "{{ route('api.cart.add') }}";
+  window.CART_REMOVE_URL = "{{ route('api.cart.remove') }}";
+  window.CART_SIZE_URL = "{{ route('cart.update.size') }}";
+</script>
+<div id="loadingSpinner">
+  <div class="spinner"></div>
+</div>
