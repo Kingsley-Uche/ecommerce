@@ -169,53 +169,57 @@ button { font-family: inherit; }
    PREMIUM E-COMMERCE BUTTON STYLES
    ============================================================ */
 .details-btn,
+/* ============================================================
+   PREMIUM VINTAGE BUTTON STYLES (Small & Uncommon)
+   ============================================================ */
+.details-btn,
 .add-cart-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.65rem 1rem;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
+    gap: 0.4rem;
+    padding: 0.35rem 0.75rem; /* Compact size */
+    font-size: 0.68rem;       /* Small scale */
+    font-weight: 500;
+    letter-spacing: 0.12em;   /* Wide vintage track */
     text-transform: uppercase;
-    border-radius: var(--radius);
-    transition: all 0.25s var(--ease);
+    font-family: var(--font-mono);
+    border-radius: 2px;       /* Sharper, more archival corners */
+    border: 1px solid var(--ink-soft);
+    background: transparent;
+    color: var(--ink);
+    transition: all 0.3s var(--ease);
     cursor: pointer;
     text-align: center;
     white-space: nowrap;
     outline: none;
+    position: relative;
 }
 
-/* Secondary / Details Button Styling */
-.details-btn {
-    background: transparent;
-    color: var(--ink);
-    border: 1px solid var(--line);
+/* Variant distinction if needed, or unify for a cohesive archival look */
+.add-cart-btn {
+    border-color: var(--clay);
+    color: var(--clay);
 }
 
 .details-btn:hover {
-    background: var(--paper);
-    border-color: var(--ink-mid);
-    color: var(--ink);
-}
-
-/* Primary / Add to Cart Button Styling */
-.add-cart-btn {
     background: var(--ink);
     color: var(--paper);
-    border: 1px solid var(--ink);
-    flex: 1;
-}
-
-.add-cart-btn:hover:not(:disabled) {
-    background: var(--clay);
-    border-color: var(--clay);
-    color: white;
-    box-shadow: 0 4px 12px rgba(181, 86, 46, 0.25);
+    border-color: var(--ink);
+    box-shadow: 2px 2px 0px 0px var(--ink-soft);
     transform: translateY(-1px);
 }
 
-.add-cart-btn:active:not(:disabled) {
+.add-cart-btn:hover {
+    background: var(--clay);
+    color: var(--paper);
+    border-color: var(--clay);
+    box-shadow: 2px 2px 0px 0px var(--clay-dim);
+    transform: translateY(-1px);
+}
+
+.details-btn:active,
+.add-cart-btn:active {
     transform: translateY(0);
     box-shadow: none;
 }
