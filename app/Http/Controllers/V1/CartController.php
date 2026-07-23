@@ -223,7 +223,6 @@ class CartController extends Controller
         $cartItems = CartModel::query()
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken))
-            ->with('product.images')
             ->get();
 
         return response()->json([
@@ -264,7 +263,7 @@ class CartController extends Controller
     /**
      * Clear all items from cart
      */
-    public function clearCart(Request $request)
+public function clearCart(Request $request)
     {
         [$userId, $cartToken] = $this->resolveCartOwner($request);
 
@@ -284,16 +283,19 @@ class CartController extends Controller
     
     public function loadCartView(Request $request, $cart_id = null)
     {
+        
         $userId    = auth()->id();
-        $cartToken = $request->cookie('cart_token');
+        $cartToken =strip_tags($cart_id);
+        
 
         $cartItems = CartModel::query()
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken))
             ->with('product.images')
             ->get();
+//http://127.0.0.1:8000/cart/load/9ce1dab0-eac1-44ce-ba33-911f52266436
 
-        return view('website.main.partials.cart', [
+        return view('website.components.cart_modal', [
             'cartItems' => $cartItems,
             'count'     => (int) $cartItems->sum('quantity'),
         ]);

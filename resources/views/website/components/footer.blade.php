@@ -138,15 +138,11 @@
   <i class="bi bi-arrow-up-short"></i>
 </a>
 <div id="preloader"></div>
-
-@include('website.components.cart_modal')
-
 <!-- === SCRIPTS - Carefully Ordered === -->
-
+<div id="cartModalContainer"></div>
 <!-- Bootstrap First (Very Important) -->
 <script src="{{ asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <!-- === CRITICAL SCRIPTS === -->
-<script src="{{ asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 
 <!-- Lazy Load Non-Critical Scripts -->
 <script src="{{ asset('assets/vendor/swiper/swiper-bundle.min.js') }}" defer></script>
@@ -162,9 +158,6 @@
 
 <script src="{{ asset('assets/js/main.js') }}"></script>
 <script src="{{ asset('assets/js/inner.js') }}"></script>
-
-<!-- Load these only if necessary on current page -->
-<script src="{{ asset('assets/js/payment.js') }}" defer></script>
 <script src="{{ asset('assets/js/cart-modal-patches.js') }}" defer></script>
 <script src="{{ asset('assets/js/cart-remove-patches.js') }}" defer></script>
 
@@ -173,6 +166,7 @@
   const CART_ADD_URL = "{{ route('api.cart.add') }}";
   window.CART_REMOVE_URL = "{{ route('api.cart.remove') }}";
   window.CART_SIZE_URL = "{{ route('cart.update.size') }}";
+   window.CART_CLEAR_URL = "{{ route('api.cart.clear') }}";
 </script>
 <div id="loadingSpinner">
   <div class="spinner"></div>

@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function () {
-
     const cartToken = getCookie('cart_token');
     const el = document.getElementById('cart_icon');
 
@@ -15,7 +14,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const formData = new FormData();
         formData.append("cart_token", cartToken);
 
-        updateCartCount(url, method, formData);
+        // Fixed: Call get_general_data and sync state instead of undefined updateCartCount
+        get_general_data(url, method, formData).then(json => {
+            if (json) {
+                if (typeof syncCartState === 'function') {
+                    syncCartState(json);
+                }
+                if (json.data && typeof CheckoutContent === 'function') {
+                    CheckoutContent(json.data);
+                }
+            }
+        });
     }
 });
 
@@ -24,22 +33,35 @@ document.addEventListener('DOMContentLoaded', function () {
    SEND POST/GET REQUEST
 -------------------------------------------- */
 async function sendFormData(formData, url, method) {
-
-    // Always attach cart_token (DO NOT append twice)
     const cartToken = getCookie("cart_token");
-    if (cartToken && !formData.has("cart_token")) {
+    
+    // If it's a FormData object, append cart_token if missing
+    if (cartToken && formData instanceof FormData && !formData.has("cart_token")) {
         formData.append("cart_token", cartToken);
     }
+    
     const spinner = document.getElementById("loadingSpinner");
-    spinner.style.display = "flex"; // Show spinner
-
+    if (spinner) spinner.style.display = "flex";
+    
     try {
-        const response = await fetch(url, {
+        // If it's a GET request, append cart_token as a query parameter
+        let requestUrl = url;
+        const options = {
             method: method.toUpperCase(),
-            body: formData,
-            headers: { "Accept": "application/json" }
-        });
+            headers: { 
+                "Accept": "application/json",
+                ...(cartToken ? { "X-Cart-Token": cartToken } : {}) // Optional custom header support
+            }
+        };
 
+        if (method.toUpperCase() !== "GET") {
+            options.body = formData;
+        } else if (cartToken) {
+            const separator = url.includes('?') ? '&' : '?';
+            requestUrl = `${url}${separator}cart_token=${encodeURIComponent(cartToken)}`;
+        }
+
+        const response = await fetch(requestUrl, options);
         const json = await response.json().catch(() => null);
 
         if (!response.ok) {
@@ -47,33 +69,22 @@ async function sendFormData(formData, url, method) {
             return json;
         }
 
-        // Save token if server sends a new one
-        if (json.data.cart_token) {
-            document.cookie = `cart_token=${json.data.cart_token}; path=/; max-age=${30 * 24 * 60 * 60}`;
+        if (typeof syncCartState === 'function') {
+            syncCartState(json);
         }
-             const data = json
-    if (!data) return;
 
-    const countEl = document.getElementById('item_number');
-
-    if (data.count !== undefined) {
-        if (countEl) {
-            countEl.classList.add('bg-warning');
-            countEl.innerHTML = data.count;
-        }
-    }
-
+        if (json.message) {
             toast(json.message, json.status);
+        }
 
         return json;
 
     } catch (error) {
         console.error("Fetch error:", error);
     } finally {
-        spinner.style.display = "none"; // Hide spinner
+        if (spinner) spinner.style.display = "none";
     }
 }
-
 
 
 /* --------------------------------------------
@@ -82,8 +93,7 @@ async function sendFormData(formData, url, method) {
 async function Processform(event) {
     event.preventDefault();
     
-
-    const form = event.target.closest("form")
+    const form = event.target.closest("form");
     if (!form) {
         console.error("Button is not inside a form");
         return;
@@ -92,13 +102,15 @@ async function Processform(event) {
     const url = form.action;
     const method = form.method;
     const formData = new FormData(form);
-    const countEl = document.getElementById('item_number').innerHTML;
-    formData.append("total_quantity", countEl);
     
+    const countEl = document.getElementById('item_number');
+    if (countEl) {
+        formData.append("total_quantity", countEl.innerHTML);
+    }
 
-
-    await sendFormData(formData, url, method);
-     const cartToken = getCookie('cart_token');
+    const response = await sendFormData(formData, url, method);
+    
+    const cartToken = getCookie('cart_token');
     const el = document.getElementById('cart_icon');
 
     if (!el) return;
@@ -106,14 +118,10 @@ async function Processform(event) {
     // Update cart link if token exists
     if (cartToken) {
         el.href = el.dataset.cartUrl + cartToken;
-
-        const url = window.location.origin + "/api/cart";
-        const method = "POST";
-
-        const formData = new FormData();
-        formData.append("cart_token", cartToken);
-
-        updateCartCount(url, method, formData);
+    }
+    
+    if (response && response.count !== undefined && countEl) {
+        countEl.textContent = response.count;
     }
 }
 
@@ -141,7 +149,6 @@ document.querySelectorAll("form").forEach(form => {
    GENERIC GET/POST
 -------------------------------------------- */
 async function get_general_data(url, method = "GET", formData = null) {
-
     const options = {
         method: method.toUpperCase(),
         headers: { "Accept": "application/json" }
@@ -164,38 +171,10 @@ async function get_general_data(url, method = "GET", formData = null) {
 
 
 /* --------------------------------------------
-   LOAD CART COUNT + CALL CART CONTENT LOADER
--------------------------------------------- */
-async function updateCartCount(url, method, formData) {
-
-    const data = await get_general_data(url, method, formData);
-    if (!data) return;
-
-    const countEl = document.getElementById('item_number');
-
-    if (data.count !== undefined) {
-        if (countEl) {
-            countEl.classList.add('bg-warning');
-            countEl.innerHTML = data.count;
-        }
-    }
-
-    // Load items inside checkout/cart page
-    await CheckoutContent(data.data);
-
-    // Run animated summary counters (purecounter)
-    //updateCartSummary(data);
-}
-
-
-/* --------------------------------------------
    RENDER CART CONTENT
 -------------------------------------------- */
 async function CheckoutContent(data) {
     const container = document.getElementById("cart_items_container");
-
-
-     
     if (!container) return;
 
     container.innerHTML = "";
@@ -208,8 +187,8 @@ async function CheckoutContent(data) {
     let subtotal = 0;
 
     data.forEach(item => {
-        const p = item.product;
-        const price = parseFloat(p.price);
+        const p = item.product || item; 
+        const price = parseFloat(p.price || 0);
         const qty = item.quantity ?? 1;
         const image = p.images?.length
             ? `/storage/${p.images[0].image_path}`
@@ -238,22 +217,19 @@ async function CheckoutContent(data) {
 
                     <div class="col-lg-2 col-4 text-center m-1">
                         <div class="quantity-selector">
-                       
-                            <button class="quantity-btn decrease" data-price="${price} text-small "><i class="bi bi-dash"></i></button>
-                            <input type="number" class="quantity-input" value="${qty}" min="1" name='quantity[]'>
-                            <input type ="hidden" name ="initial_quantity[]" value="${qty}">
-                            <input type ="hidden" name ="product_id[]" value ="${p.id}">
-                             <input type ="hidden" name ="total" value ="${total.toFixed(2)}">
-                        
-                            <button class="quantity-btn increase" data-price="${price} txt-small"><i class="bi bi-plus"></i></button>
+                            <button class="quantity-btn decrease" data-price="${price}"><i class="bi bi-dash"></i></button>
+                            <input type="number" class="quantity-input" value="${qty}" min="1" name="quantity[]">
+                            <input type="hidden" name="initial_quantity[]" value="${qty}">
+                            <input type="hidden" name="product_id[]" value="${p.id}">
+                            <input type="hidden" name="total" value="${total.toFixed(2)}">
+                            <button class="quantity-btn increase" data-price="${price}"><i class="bi bi-plus"></i></button>
                         </div>
-                
                     </div>
 
                     <div class="col-lg-2 col-4 text-center item-total">
                         <strong>$${total.toFixed(2)}</strong>
                     </div>
-                
+
                 </div>
             </div>
         `);
@@ -280,17 +256,14 @@ function attachQuantityListeners() {
 
             input.value = qty;
 
-            // Update item total
             const totalEl = container.querySelector(".item-total strong");
             const itemTotal = (price * qty).toFixed(2);
             totalEl.innerText = `$${itemTotal}`;
 
-            // Update cart summary
             updateSummaryTotals();
         };
     });
 
-    // Optional: update total if user manually changes input
     document.querySelectorAll(".quantity-input").forEach(input => {
         input.onchange = function () {
             let qty = parseInt(input.value) || 1;
@@ -326,7 +299,7 @@ function updateSummaryTotals() {
 }
 
 /* --------------------------------------------
-   PURECOUNTER SUMMARY ANIMATION
+   PURECOUNTER SUMMARY ANIMATION (SINGLE SAFE VERSION)
 -------------------------------------------- */
 function updateCartSummary(data) {
     if (!data) return;
@@ -344,17 +317,23 @@ function updateCartSummary(data) {
             el.setAttribute("data-purecounter-start", el.innerText.replace(/[^0-9.]/g, "") || 0);
             el.setAttribute("data-purecounter-end", fields[id].toFixed(2));
             el.setAttribute("data-purecounter-duration", 1);
+            
+            el.innerText = fields[id].toFixed(2);
         }
     });
 
-    new PureCounter();
+    if (typeof PureCounter !== 'undefined') {
+        new PureCounter();
+    }
 }
 
+
+/* --------------------------------------------
+   TOAST NOTIFICATION
+-------------------------------------------- */
 function toast(message, type = "success") {
-    // Create unique ID for each toast
     const id = "toast_" + Date.now();
 
-    // Bootstrap color types
     const bg = {
         success: "bg-success",
         error: "bg-danger",
@@ -362,7 +341,6 @@ function toast(message, type = "success") {
         info: "bg-info text-dark"
     }[type] || "bg-primary";
 
-    // Toast HTML element
     const toastHTML = `
         <div id="${id}" class="toast align-items-center text-white ${bg} border-0" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
@@ -372,15 +350,11 @@ function toast(message, type = "success") {
         </div>
     `;
 
-    // Add toast to container
     document.getElementById("toast-container").insertAdjacentHTML("beforeend", toastHTML);
 
-    // Show toast
     const toastElement = document.getElementById(id);
     const bsToast = new bootstrap.Toast(toastElement, { delay: 3000 });
     bsToast.show();
 
-    // Auto-remove from DOM after it hides
     toastElement.addEventListener("hidden.bs.toast", () => toastElement.remove());
 }
-

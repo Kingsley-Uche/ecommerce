@@ -95,8 +95,6 @@
                   <p class="mb-0">Access account &amp; manage orders</p>
                 </div>
                 <div class="dropdown-body">
-                  {{-- TODO: account.profile / account.orders / account.wishlist / account.settings
-                       routes do not exist yet — see note below the file --}}
                   <a class="dropdown-item d-flex align-items-center" href="#">
                     <i class="bi bi-person-circle me-2"></i>
                     <span>My Profile</span>
@@ -120,20 +118,20 @@
               </div>
             </div>
 
-            {{-- Wishlist — no route defined yet, see note --}}
+            {{-- Wishlist --}}
             <a href="#" class="header-action-btn d-none d-md-block">
               <i class="bi bi-heart"></i>
               <span class="badge">0</span>
             </a>
 
             {{-- Cart --}}
-            <a id="cart_icon" data-cart-url="{{ route('cart.view', ['cart_id' => 0]) }}" class="header-action-btn" data-bs-toggle="modal" data-bs-target="#cart_modal">
-              <i class="bi bi-cart3"></i>
+            <a href="#" id="cart_icon" data-cart-url="{{ route('cart.view', ['cart_id' => 0]) }}" class="header-action-btn">
+              <i class="bi bi-cart3" id="cart_item"></i>
               <span class="badge text-small text-white" id="item_number"></span>
             </a>
 
             {{-- Mobile nav toggle --}}
-            <i class="mobile-nav-toggle d-xl-none bi bi-list me-0"></i>
+            <i class="mobile-nav-toggle d-xl-none bi bi-list me-0 text-dark"></i>
           </div>
         </div>
       </div>
@@ -142,30 +140,29 @@
     {{-- ============================================================
          NAVIGATION — built from $product_categ, ordered by priority
          ============================================================ --}}
-    <div class="header-nav">
-      <div class="container-fluid container-xl position-relative">
+  <div class="header-nav">
+    <div class="container-fluid container-xl position-relative">
         <nav id="navmenu" class="navmenu">
-          <ul>
-            <li ><a href="{{ route('home') }}">Home</a></li>
-             <li class="rounded-pill bg-warning m-2"><a href="{{ route('size-guide')}}" class='text-dark'>Size Guide</a></li>
-
-            @if(isset($product_categ) && count($product_categ))
-              @foreach($product_categ as $catId => $cat)
+            <ul>
                 <li>
-                  <a href="{{ route('category.products', ['category_id' => encrypt($catId)]) }}">
-                    {{ $cat['category_name'] }}
-                  </a>
+                    <a href="{{ route('home') }}">Home</a>
                 </li>
-              @endforeach
-            @endif
-
-            <!-- <li><a href="{{ route('cart.view', ['cart_id' => 0]) }}">Cart</a></li> -->
-            {{-- Checkout requires a cart_token: route('payment.checkout', $cartToken) — link here once a token is available client-side --}}
-            {{-- No contact page route defined yet, see note --}}
-          </ul>
+                <li class="rounded-pill bg-warning m-2">
+                    <a href="{{ route('size-guide') }}" class="text-dark">Size Guide</a>
+                </li>
+                @if(isset($product_categ) && count($product_categ))
+                    @foreach($product_categ as $catId => $cat)
+                        <li>
+                            <a href="{{ route('category.products', ['category_id'=>encrypt($catId)]) }}">
+                                {{ $cat['category_name'] }}
+                            </a>
+                        </li>
+                    @endforeach
+                @endif
+            </ul>
         </nav>
-      </div>
     </div>
+</div>
 
     {{-- ============================================================
          MOBILE SEARCH
@@ -187,11 +184,12 @@
 
 <script>
 /* ============================================================
-   CART BADGE — loads real count on page load, and exposes a
-   helper any add-to-cart form/button can call after a response.
-   ============================================================ */
+    CART BADGE — loads real count on page load, and exposes a
+    helper any add-to-cart form/button can call after a response.
+    ============================================================ */
 (function () {
     const badge = document.getElementById('item_number');
+    const cart_icon = document.getElementById('cart_icon');
     if (!badge) return;
 
     function setCount(count) {
@@ -200,9 +198,15 @@
         badge.style.display = n > 0 ? '' : 'none';
     }
 
-    // api.cart.get is a POST route — cart_token (if any) comes from the
-    // cart_token cookie automatically; guests with no cookie yet and no
-    // logged-in user simply get an empty cart back.
+    function setCartId(cartToken) {
+        if (cartToken && cart_icon) {
+            const urlTemplate = "{{ route('cart.view', ['cart_id' => '__CART_ID__']) }}";
+            const newUrl = urlTemplate.replace('__CART_ID__', encodeURIComponent(cartToken));
+            cart_icon.setAttribute('data-cart-url', newUrl);
+            cart_icon.setAttribute('href', newUrl);
+        }
+    }
+
     function loadCartCount() {
         fetch("{{ route('api.cart.get') }}", {
             method: 'POST',
@@ -214,15 +218,20 @@
             body: JSON.stringify({}),
         })
             .then(res => res.json())
-            .then(data => setCount(data.count))
+            .then(data => {
+                setCount(data.count);
+                if (data.cart_token) {
+                    setCartId(data.cart_token);
+                }
+            })
             .catch(() => setCount(0));
     }
 
-    // Expose globally so add-to-cart forms (e.g. the "Add to Cart" buttons
-    // on product cards) can update the badge immediately from the JSON
-    // response returned by api.cart.add, instead of waiting on a reload.
     window.updateCartBadge = setCount;
+    window.updateCartToken = setCartId;
 
     document.addEventListener('DOMContentLoaded', loadCartCount);
 })();
+
+
 </script>

@@ -106,42 +106,67 @@
                     </div>
 
                     {{-- Quantity stepper --}}
-                    <div class="col-lg-2 col-6 text-center">
-                        <label class="form-label small text-muted d-block d-lg-none">Qty</label>
-                        <div class="quantity-selector d-flex align-items-center justify-content-center gap-1">
+                <div class="col-lg-2 col-6 text-center">
+    <label class="form-label small text-muted d-block d-lg-none">Qty</label>
 
-                            <button
-                                type="button"
-                                class="quantity-btn decrease btn btn-sm btn-outline-dark"
-                                data-price="{{ $price }}"
-                            >
-                                <i class="bi bi-dash"></i>
-                            </button>
+    <div class="quantity-selector d-flex align-items-center justify-content-center gap-1">
 
-                            <input
-                                type="number"
-                                class="quantity-input form-control form-control-sm text-center"
-                                value="{{ $qty }}"
-                                min="1"
-                                name="quantity[]"
-                                style="width: 56px;"
-                            >
-                      
-                            <select name="size[]" class="form-control form-control-sm" style="width: 56px;">
-                            <input type="hidden" name="initial_quantity[]" value="{{ $qty }}">
-                            <input type="hidden" name="product_id[]"       value="{{ $product->id ?? '' }}">
-                            <input type="hidden" name="total"              value="{{ number_format($total, 2, '.', '') }}">
+        <button
+            type="button"
+            class="quantity-btn decrease btn btn-sm btn-outline-dark"
+            data-price="{{ $price }}"
+        >
+            <i class="bi bi-dash"></i>
+        </button>
 
-                            <button
-                                type="button"
-                                class="quantity-btn increase btn btn-sm btn-outline-dark"
-                                data-price="{{ $price }}"
-                            >
-                                <i class="bi bi-plus"></i>
-                            </button>
+        <input
+            type="number"
+            class="quantity-input form-control form-control-sm text-center"
+            value="{{ $qty }}"
+            min="1"
+            name="quantity[]"
+            style="width: 56px;"
+        >
 
-                        </div>
-                    </div>
+        <select 
+            name="size[]" 
+            class="form-control form-control-sm"
+            style="width: 80px;"
+        >
+            <option value="">Size</option>
+            @foreach($product->sizes ?? [] as $size)
+                <option value="{{ $size }}">{{ $size }}</option>
+            @endforeach
+        </select>
+
+        <input 
+            type="hidden" 
+            name="initial_quantity[]" 
+            value="{{ $qty }}"
+        >
+
+        <input 
+            type="hidden" 
+            name="product_id[]" 
+            value="{{ $product->id ?? '' }}"
+        >
+
+        <input 
+            type="hidden" 
+            name="total" 
+            value="{{ number_format($total, 2, '.', '') }}"
+        >
+
+        <button
+            type="button"
+            class="quantity-btn increase btn btn-sm btn-outline-dark"
+            data-price="{{ $price }}"
+        >
+            <i class="bi bi-plus"></i>
+        </button>
+
+    </div>
+</div>
 
                     {{-- Line total --}}
                     <div class="col-lg-1 col-4 text-center item-total">
@@ -175,99 +200,3 @@
     </div>
 
 @endif
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-
-    /* ── Size selector → update hidden input + optional AJAX ── */
-    document.querySelectorAll('.size-selector').forEach(function (select) {
-        select.addEventListener('change', function () {
-            const productId  = this.dataset.productId;
-            const cartItemId = this.dataset.cartItemId;
-            const size       = this.value;
-
-            // Keep the hidden input in sync so the cart-update form sends it
-            const hiddenInput = this.closest('.cart-item').querySelector('.size-input');
-            if (hiddenInput) {
-                hiddenInput.value = size;
-            }
-
-            // AJAX update — fires immediately when size is changed
-            updateCartItemSize(cartItemId, productId, size);
-        });
-    });
-
-    async function updateCartItemSize(cartItemId, productId, size) {
-        // Requires a route:
-        //   Route::post('/cart/size', [CartController::class, 'updateSize'])->name('cart.update.size');
-        // If you don't have this route yet, this call will silently fail and
-        // the size is still sent when the "Update Cart" button is pressed
-        // via the form's size[] hidden inputs.
-        const url = window.CART_SIZE_URL ?? null;
-        if (!url) return;
-
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept':       'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                },
-                body: JSON.stringify({
-                    cart_item_id: cartItemId,
-                    product_id:   productId,
-                    size:         size,
-                }),
-            });
-
-            const json = await response.json().catch(() => null);
-
-            if (!response.ok) {
-                if (typeof toast === 'function') {
-                    toast(json?.message ?? 'Could not update size.', 'error');
-                }
-                return;
-            }
-
-            if (typeof toast === 'function') {
-                toast(json?.message ?? 'Size updated.', 'success');
-            }
-
-            // If size change affects price, update the displayed price
-            if (json?.new_price) {
-                const cartItem   = document.querySelector(`.cart-item[data-product-id="${productId}"]`);
-                const priceEl    = cartItem?.querySelector('.current-price strong');
-                const totalEl    = cartItem?.querySelector('.item-total strong');
-                const qtyInput   = cartItem?.querySelector('.quantity-input');
-
-                if (priceEl) {
-                    priceEl.textContent = '₦' + parseFloat(json.new_price).toLocaleString('en-NG', {
-                        minimumFractionDigits: 2,
-                    });
-                }
-
-                if (totalEl && qtyInput) {
-                    const newTotal = parseFloat(json.new_price) * parseInt(qtyInput.value);
-                    totalEl.textContent = '₦' + newTotal.toLocaleString('en-NG', {
-                        minimumFractionDigits: 2,
-                    });
-                }
-
-                // Update the data-price on +/- buttons so quantity changes
-                // calculate from the new price
-                cartItem?.querySelectorAll('.quantity-btn').forEach(btn => {
-                    btn.dataset.price = json.new_price;
-                });
-            }
-
-        } catch (err) {
-            console.error('Size update failed:', err);
-        }
-    }
-});
-</script>
-@endpush

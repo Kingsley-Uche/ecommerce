@@ -26,19 +26,19 @@ class AppServiceProvider extends ServiceProvider
         //
           Schema::defaultStringLength(191);
           Paginator::useBootstrap();
-          View::composer('website.components.cart_modal', function ($view) {
-            $request = request();
+        //   View::composer('website.components.cart_modal', function ($view) {
+        //     $request = request();
  
-            $userId    = auth()->id();
-            $cartToken = $request->cookie('cart_token');
+        //     $userId    = auth()->id();
+        //     $cartToken = $request->cookie('cart_token');
  
-            $cartItems = CartModel::query()
-                ->when($userId, fn ($q) => $q->where('user_id', $userId))
-                ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken))
-                ->with('product.images')
-                ->get();
+        //     $cartItems = CartModel::query()
+        //         ->when($userId, fn ($q) => $q->where('user_id', $userId))
+        //         ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken))
+        //         ->with('product.images')
+        //         ->get();
  
-            $view->with('cartItems', $cartItems);
-        });
+        //     $view->with('cartItems', $cartItems);
+        // });
     }
 }

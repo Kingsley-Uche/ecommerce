@@ -28,7 +28,7 @@ Route::prefix('cart')->group(function () {
     // The header currently passes cart_id=0 as a placeholder. Once the
     // frontend JS no longer needs a numeric id in the URL, this {cart_id}
     // segment can be dropped: Route::get('/load', ...)->name('cart.view');
-    Route::get('/load/{cart_id}', [CartController::class, 'loadCartView'])->name('cart.view');
+    
 });
 
 Route::prefix('admin')->group(function () {

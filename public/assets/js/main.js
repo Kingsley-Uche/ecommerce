@@ -64,7 +64,6 @@
         mobileNavToogle();
       }
     });
-
   });
 
   /**
@@ -99,13 +98,15 @@
       window.scrollY > 100 ? scrollTop.classList.add('active') : scrollTop.classList.remove('active');
     }
   }
-  scrollTop.addEventListener('click', (e) => {
-    e.preventDefault();
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
+  if (scrollTop) {
+    scrollTop.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
     });
-  });
+  }
 
   window.addEventListener('load', toggleScrollTop);
   document.addEventListener('scroll', toggleScrollTop);
@@ -114,12 +115,14 @@
    * Animation on scroll function and init
    */
   function aosInit() {
-    AOS.init({
-      duration: 600,
-      easing: 'ease-in-out',
-      once: true,
-      mirror: false
-    });
+    if (typeof AOS !== 'undefined') {
+      AOS.init({
+        duration: 600,
+        easing: 'ease-in-out',
+        once: true,
+        mirror: false
+      });
+    }
   }
   window.addEventListener('load', aosInit);
 
@@ -143,7 +146,6 @@
     if (hoursElement) hoursElement.innerHTML = hours;
     if (minutesElement) minutesElement.innerHTML = minutes;
     if (secondsElement) secondsElement.innerHTML = seconds;
-
   }
 
   document.querySelectorAll('.countdown').forEach(function(countDownItem) {
@@ -155,806 +157,596 @@
 
   /**
    * Ecommerce Cart Functionality
-   * Handles quantity changes and item removal
    */
-
   function ecommerceCartTools() {
-    // Get all quantity buttons and inputs directly
-    const decreaseButtons = document.querySelectorAll('.quantity-btn.decrease');
-    const increaseButtons = document.querySelectorAll('.quantity-btn.increase');
-    const quantityInputs = document.querySelectorAll('.quantity-input');
-    const removeButtons = document.querySelectorAll('.remove-item');
+    "use strict";
 
-    // Decrease quantity buttons
-    decreaseButtons.forEach(btn => {
-      btn.addEventListener('click', function() {
-        const quantityInput = btn.closest('.quantity-selector').querySelector('.quantity-input');
-        let currentValue = parseInt(quantityInput.value);
-        if (currentValue > 1) {
-          quantityInput.value = currentValue - 1;
+    /* ============================================================
+       CONFIG & VARIABLES
+    ============================================================ */
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+    const sizeUrl = window.CART_SIZE_URL ?? null;
+
+    /* ============================================================
+       EVENT DELEGATION
+    ============================================================ */
+    document.addEventListener('click', handleClick);
+    document.addEventListener('change', handleChange);
+
+    // Initial summary calc on page load
+    recalculateSummary();
+
+    /* ============================================================
+       CLICK HANDLER
+    ============================================================ */
+    async function handleClick(e) {
+      /* Decrease quantity */
+      const decreaseBtn = e.target.closest('.quantity-btn.decrease');
+      if (decreaseBtn) {
+        const item = decreaseBtn.closest('.cart-item');
+        const input = item?.querySelector('.quantity-input');
+        if (!input) return;
+
+        let quantity = parseInt(input.value) || 1;
+        if (quantity > 1) {
+          input.value = quantity - 1;
+          updateItemTotal(item);
+          recalculateSummary();
         }
-      });
-    });
-
-    // Increase quantity buttons
-    increaseButtons.forEach(btn => {
-      btn.addEventListener('click', function() {
-        const quantityInput = btn.closest('.quantity-selector').querySelector('.quantity-input');
-        let currentValue = parseInt(quantityInput.value);
-        if (currentValue < parseInt(quantityInput.getAttribute('max'))) {
-          quantityInput.value = currentValue + 1;
-        }
-      });
-    });
-
-    // Manual quantity inputs
-    quantityInputs.forEach(input => {
-      input.addEventListener('change', function() {
-        let currentValue = parseInt(input.value);
-        const min = parseInt(input.getAttribute('min'));
-        const max = parseInt(input.getAttribute('max'));
-
-        // Validate input
-        if (isNaN(currentValue) || currentValue < min) {
-          input.value = min;
-        } else if (currentValue > max) {
-          input.value = max;
-        }
-      });
-    });
-
-    // Remove item buttons
-    removeButtons.forEach(btn => {
-      btn.addEventListener('click', function() {
-        btn.closest('.cart-item').remove();
-      });
-    });
-  }
-
-  ecommerceCartTools();
-
-  /**
-   * Initiate glightbox
-   */
-  const glightbox = GLightbox({
-    selector: '.glightbox'
-  });
-
-  /**
-   * Product Image Zoom and Thumbnail Functionality
-   */
-
-  function productDetailFeatures() {
-    // Initialize Drift for image zoom
-    function initDriftZoom() {
-      // Check if Drift is available
-      if (typeof Drift === 'undefined') {
-        console.error('Drift library is not loaded');
         return;
       }
 
-      const driftOptions = {
-        paneContainer: document.querySelector('.image-zoom-container'),
-        inlinePane: window.innerWidth < 768 ? true : false,
-        inlineOffsetY: -85,
-        containInline: true,
-        hoverBoundingBox: false,
-        zoomFactor: 3,
-        handleTouch: false
+      /* Increase quantity */
+      const increaseBtn = e.target.closest('.quantity-btn.increase');
+      if (increaseBtn) {
+        const item = increaseBtn.closest('.cart-item');
+        const input = item?.querySelector('.quantity-input');
+        if (!input) return;
+
+        let quantity = parseInt(input.value) || 1;
+        const max = parseInt(input.getAttribute('max')) || 999;
+
+        if (quantity < max) {
+          input.value = quantity + 1;
+          updateItemTotal(item);
+          recalculateSummary();
+        }
+        return;
+      }
+
+      /* Remove Item */
+      const removeBtn = e.target.closest('.remove-item');
+      if (removeBtn) {
+        const item = removeBtn.closest('.cart-item');
+        if (!item) return;
+
+        item.remove();
+        recalculateSummary();
+        return;
+      }
+
+      /* Update Cart / Checkout Button */
+      const updateBtn = e.target.closest('.cart_update');
+      if (updateBtn) {
+        e.preventDefault();
+        await submitCart(updateBtn);
+        return;
+      }
+
+      /* Place Order */
+      const orderBtn = e.target.closest('#place_order_btn');
+      if (orderBtn) {
+        e.preventDefault();
+        await placeOrder();
+        return;
+      }
+    }
+
+    /* ============================================================
+       CHANGE HANDLER
+    ============================================================ */
+    async function handleChange(e) {
+      /* Manual quantity change */
+      if (e.target.matches('.quantity-input')) {
+        const input = e.target;
+        const item = input.closest('.cart-item');
+        let value = parseInt(input.value);
+        const min = parseInt(input.min) || 1;
+        const max = parseInt(input.max) || 999;
+
+        if (isNaN(value) || value < min) {
+          value = min;
+          input.value = min;
+        } else if (value > max) {
+          value = max;
+          input.value = max;
+        }
+
+        updateItemTotal(item);
+        recalculateSummary();
+        return;
+      }
+
+      /* Size change */
+      if (e.target.matches('.size-selector')) {
+        await updateCartItemSize(e.target);
+        return;
+      }
+    }
+
+    /* ============================================================
+       ITEM TOTAL CALCULATION
+    ============================================================ */
+    function updateItemTotal(item) {
+      if (!item) return;
+      const qty = parseInt(item.querySelector('.quantity-input')?.value) || 1;
+      const priceBtn = item.querySelector('.quantity-btn') || item.querySelector('.size-selector');
+      const price = parseFloat(priceBtn?.dataset.price ?? item.dataset.price ?? 0);
+      const total = qty * price;
+      
+      const totalLabel = item.querySelector('.item-total-badge');
+      if (totalLabel) {
+        totalLabel.textContent = formatMoney(total);
+      }
+
+      const hiddenTotal = item.querySelector('input[name="total"]');
+      if (hiddenTotal) {
+        hiddenTotal.value = total.toFixed(2);
+      }
+    }
+
+    /* ============================================================
+       COOKIE HELPER
+    ============================================================ */
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      return parts.length === 2 ? parts.pop().split(';')[0] : null;
+    }
+
+    /* ============================================================
+       CART REQUEST
+    ============================================================ */
+    async function updateCart(url, method, formData) {
+      const options = {
+        method: method.toUpperCase(),
+        headers: {
+          "Accept": "application/json"
+        }
       };
 
-      // Initialize Drift on the main product image
-      const mainImage = document.getElementById('main-product-image');
-      if (mainImage) {
-        new Drift(mainImage, driftOptions);
+      if (method.toUpperCase() !== "GET" && formData) {
+        options.body = formData;
+      }
+
+      try {
+        const response = await fetch(url, options);
+        const json = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          console.error("Cart update failed", json);
+          return json;
+        }
+
+        if (json?.count !== undefined) {
+          const countEl = document.getElementById('item_number');
+          if (countEl) {
+            countEl.textContent = json.count;
+          }
+        }
+
+        return json;
+      } catch (error) {
+        console.error("Cart request error:", error);
+        return {
+          status: "error",
+          message: "Network error"
+        };
       }
     }
 
-    // Thumbnail click functionality
-    function initThumbnailClick() {
-      const thumbnails = document.querySelectorAll('.thumbnail-item');
-      const mainImage = document.getElementById('main-product-image');
+    /* ============================================================
+       SUBMIT CART
+    ============================================================ */
+    async function submitCart(button) {
+      const form = document.getElementById('update_cart_form');
+      if (!form) return;
+      const formData = new FormData(form);
+      const cartToken = getCookie('cart_token');
+      if (cartToken) {
+        formData.append('cart_token', cartToken);
+      }
 
-      if (!thumbnails.length || !mainImage) return;
+      const json = await updateCart(form.action, form.method, formData);
+      if (!json) return;
+      
+      if (typeof window.toast === 'function') {
+        window.toast(json.message, json.status);
+      }
 
-      thumbnails.forEach(thumbnail => {
-        thumbnail.addEventListener('click', function() {
-          // Get image path from data attribute
-          const imageSrc = this.getAttribute('data-image');
+      if (button.dataset.info === "checkout") {
+        const token = getCookie('cart_token');
+        window.location.href = `/payment/checkout/${encodeURIComponent(token)}`;
+        return;
+      }
 
-          // Update main image src and zoom attribute
-          mainImage.src = imageSrc;
-          mainImage.setAttribute('data-zoom', imageSrc);
+      const modal = document.getElementById('cart_modal');
+      if (modal && typeof bootstrap !== 'undefined') {
+        const instance = bootstrap.Modal.getInstance(modal);
+        instance?.hide();
+      }
+    }
 
-          // Update active state
-          thumbnails.forEach(item => item.classList.remove('active'));
-          this.classList.add('active');
+    /* ============================================================
+       SIZE UPDATE AJAX
+    ============================================================ */
+    async function updateCartItemSize(select) {
+      if (!sizeUrl) return;
 
-          // Reinitialize Drift for the new image
-          initDriftZoom();
+      const cartItem = select.closest('.cart-item');
+      if (!cartItem) return;
+
+      const productId = select.dataset.productId;
+      const cartItemId = select.dataset.cartItemId;
+      const size = select.value;
+      const originalHTML = select.innerHTML;
+
+      select.disabled = true;
+      select.innerHTML = `<option>Updating...</option>`;
+
+      try {
+        const response = await fetch(sizeUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "X-CSRF-TOKEN": csrfToken
+          },
+          body: JSON.stringify({
+            cart_item_id: cartItemId,
+            product_id: productId,
+            size: size
+          })
         });
-      });
-    }
 
-    // Image navigation functionality (prev/next buttons)
-    function initImageNavigation() {
-      const prevButton = document.querySelector('.image-nav-btn.prev-image');
-      const nextButton = document.querySelector('.image-nav-btn.next-image');
+        const json = await response.json().catch(() => null);
 
-      if (!prevButton || !nextButton) return;
-
-      const thumbnails = Array.from(document.querySelectorAll('.thumbnail-item'));
-      if (!thumbnails.length) return;
-
-      // Function to navigate to previous or next image
-      function navigateImage(direction) {
-        // Find the currently active thumbnail
-        const activeIndex = thumbnails.findIndex(thumb => thumb.classList.contains('active'));
-        if (activeIndex === -1) return;
-
-        let newIndex;
-        if (direction === 'prev') {
-          // Go to previous image or loop to the last one
-          newIndex = activeIndex === 0 ? thumbnails.length - 1 : activeIndex - 1;
-        } else {
-          // Go to next image or loop to the first one
-          newIndex = activeIndex === thumbnails.length - 1 ? 0 : activeIndex + 1;
+        if (!response.ok) {
+          throw new Error(json?.message ?? "Unable to update size");
         }
 
-        // Simulate click on the new thumbnail
-        thumbnails[newIndex].click();
-      }
+        select.innerHTML = originalHTML;
+        select.value = size;
 
-      // Add event listeners to navigation buttons
-      prevButton.addEventListener('click', () => navigateImage('prev'));
-      nextButton.addEventListener('click', () => navigateImage('next'));
-    }
+        if (json?.new_price) {
+          const price = parseFloat(json.new_price);
+          const qty = parseInt(cartItem.querySelector('.quantity-input')?.value) || 1;
+          const total = price * qty;
 
-    // Initialize all features
-    initDriftZoom();
-    initThumbnailClick();
-    initImageNavigation();
-  }
+          const priceLabel = cartItem.querySelector('.current-price strong') ?? cartItem.querySelector('.col-lg-2 strong');
+          if (priceLabel) {
+            priceLabel.textContent = formatMoney(price);
+          }
 
-  productDetailFeatures();
+          const totalLabel = cartItem.querySelector('.item-total strong') ?? cartItem.querySelector('.col-lg-1 strong');
+          if (totalLabel) {
+            totalLabel.textContent = formatMoney(total);
+          }
 
-  /**
-   * Price range slider implementation for price filtering.
-   */
-  function priceRangeWidget() {
-    // Get all price range widgets on the page
-    const priceRangeWidgets = document.querySelectorAll('.price-range-container');
-
-    priceRangeWidgets.forEach(widget => {
-      const minRange = widget.querySelector('.min-range');
-      const maxRange = widget.querySelector('.max-range');
-      const sliderProgress = widget.querySelector('.slider-progress');
-      const minPriceDisplay = widget.querySelector('.current-range .min-price');
-      const maxPriceDisplay = widget.querySelector('.current-range .max-price');
-      const minPriceInput = widget.querySelector('.min-price-input');
-      const maxPriceInput = widget.querySelector('.max-price-input');
-      const applyButton = widget.querySelector('.filter-actions .btn-primary');
-
-      if (!minRange || !maxRange || !sliderProgress || !minPriceDisplay || !maxPriceDisplay || !minPriceInput || !maxPriceInput) return;
-
-      // Slider configuration
-      const sliderMin = parseInt(minRange.min);
-      const sliderMax = parseInt(minRange.max);
-      const step = parseInt(minRange.step) || 1;
-
-      // Initialize with default values
-      let minValue = parseInt(minRange.value);
-      let maxValue = parseInt(maxRange.value);
-
-      // Set initial values
-      updateSliderProgress();
-      updateDisplays();
-
-      // Min range input event
-      minRange.addEventListener('input', function() {
-        minValue = parseInt(this.value);
-
-        // Ensure min doesn't exceed max
-        if (minValue > maxValue) {
-          minValue = maxValue;
-          this.value = minValue;
-        }
-
-        // Update min price input and display
-        minPriceInput.value = minValue;
-        updateDisplays();
-        updateSliderProgress();
-      });
-
-      // Max range input event
-      maxRange.addEventListener('input', function() {
-        maxValue = parseInt(this.value);
-
-        // Ensure max isn't less than min
-        if (maxValue < minValue) {
-          maxValue = minValue;
-          this.value = maxValue;
-        }
-
-        // Update max price input and display
-        maxPriceInput.value = maxValue;
-        updateDisplays();
-        updateSliderProgress();
-      });
-
-      // Min price input change
-      minPriceInput.addEventListener('change', function() {
-        let value = parseInt(this.value) || sliderMin;
-
-        // Ensure value is within range
-        value = Math.max(sliderMin, Math.min(sliderMax, value));
-
-        // Ensure min doesn't exceed max
-        if (value > maxValue) {
-          value = maxValue;
-        }
-
-        // Update min value and range input
-        minValue = value;
-        this.value = value;
-        minRange.value = value;
-        updateDisplays();
-        updateSliderProgress();
-      });
-
-      // Max price input change
-      maxPriceInput.addEventListener('change', function() {
-        let value = parseInt(this.value) || sliderMax;
-
-        // Ensure value is within range
-        value = Math.max(sliderMin, Math.min(sliderMax, value));
-
-        // Ensure max isn't less than min
-        if (value < minValue) {
-          value = minValue;
-        }
-
-        // Update max value and range input
-        maxValue = value;
-        this.value = value;
-        maxRange.value = value;
-        updateDisplays();
-        updateSliderProgress();
-      });
-
-      // Apply button click
-      if (applyButton) {
-        applyButton.addEventListener('click', function() {
-          // This would typically trigger a form submission or AJAX request
-          console.log(`Applying price filter: $${minValue} - $${maxValue}`);
-
-          // Here you would typically add code to filter products or redirect to a filtered URL
-        });
-      }
-
-      // Helper function to update the slider progress bar
-      function updateSliderProgress() {
-        const range = sliderMax - sliderMin;
-        const minPercent = ((minValue - sliderMin) / range) * 100;
-        const maxPercent = ((maxValue - sliderMin) / range) * 100;
-
-        sliderProgress.style.left = `${minPercent}%`;
-        sliderProgress.style.width = `${maxPercent - minPercent}%`;
-      }
-
-      // Helper function to update price displays
-      function updateDisplays() {
-        minPriceDisplay.textContent = `$${minValue}`;
-        maxPriceDisplay.textContent = `$${maxValue}`;
-      }
-    });
-  }
-  priceRangeWidget();
-
-  /**
-   * Ecommerce Checkout Section
-   * This script handles the functionality of both multi-step and one-page checkout processes
-   */
-
-  function initCheckout() {
-    // Detect checkout type
-    const isMultiStepCheckout = document.querySelector('.checkout-steps') !== null;
-    const isOnePageCheckout = document.querySelector('.checkout-section') !== null;
-
-    // Initialize common functionality
-    initInputMasks();
-    initPromoCode();
-
-    // Initialize checkout type specific functionality
-    if (isMultiStepCheckout) {
-      initMultiStepCheckout();
-    }
-
-    if (isOnePageCheckout) {
-      initOnePageCheckout();
-    }
-
-    // Initialize tooltips (works for both checkout types)
-    initTooltips();
-  }
-
-  initCheckout();
-
-  // Function to initialize multi-step checkout
-  function initMultiStepCheckout() {
-    // Get all checkout elements
-    const checkoutSteps = document.querySelectorAll('.checkout-steps .step');
-    const checkoutForms = document.querySelectorAll('.checkout-form');
-    const nextButtons = document.querySelectorAll('.next-step');
-    const prevButtons = document.querySelectorAll('.prev-step');
-    const editButtons = document.querySelectorAll('.btn-edit');
-    const paymentMethods = document.querySelectorAll('.payment-method-header');
-    const summaryToggle = document.querySelector('.btn-toggle-summary');
-    const orderSummaryContent = document.querySelector('.order-summary-content');
-
-    // Step Navigation
-    nextButtons.forEach(button => {
-      button.addEventListener('click', function() {
-        const nextStep = parseInt(this.getAttribute('data-next'));
-        navigateToStep(nextStep);
-      });
-    });
-
-    prevButtons.forEach(button => {
-      button.addEventListener('click', function() {
-        const prevStep = parseInt(this.getAttribute('data-prev'));
-        navigateToStep(prevStep);
-      });
-    });
-
-    editButtons.forEach(button => {
-      button.addEventListener('click', function() {
-        const editStep = parseInt(this.getAttribute('data-edit'));
-        navigateToStep(editStep);
-      });
-    });
-
-    // Payment Method Selection for multi-step checkout
-    paymentMethods.forEach(header => {
-      header.addEventListener('click', function() {
-        // Get the radio input within this header
-        const radio = this.querySelector('input[type="radio"]');
-        if (radio) {
-          radio.checked = true;
-
-          // Update active state for all payment methods
-          const allPaymentMethods = document.querySelectorAll('.payment-method');
-          allPaymentMethods.forEach(method => {
-            method.classList.remove('active');
+          cartItem.querySelectorAll('.quantity-btn').forEach(btn => {
+            btn.dataset.price = price;
           });
 
-          // Add active class to the parent payment method
-          this.closest('.payment-method').classList.add('active');
-
-          // Show/hide payment method bodies
-          const allPaymentBodies = document.querySelectorAll('.payment-method-body');
-          allPaymentBodies.forEach(body => {
-            body.classList.add('d-none');
-          });
-
-          const selectedBody = this.closest('.payment-method').querySelector('.payment-method-body');
-          if (selectedBody) {
-            selectedBody.classList.remove('d-none');
+          const hiddenTotal = cartItem.querySelector('input[name="total"]');
+          if (hiddenTotal) {
+            hiddenTotal.value = total.toFixed(2);
           }
+        }
+
+        recalculateSummary();
+
+        if (typeof window.toast === 'function') {
+          window.toast(json.message ?? "Size updated", "success");
+        }
+      } catch (error) {
+        console.error(error);
+        select.innerHTML = originalHTML;
+        select.value = size;
+
+        if (typeof window.toast === 'function') {
+          window.toast(error.message, "error");
+        }
+      } finally {
+        select.disabled = false;
+      }
+    }
+
+    /* ============================================================
+       SUMMARY CALCULATION
+    ============================================================ */
+/* ============================================================
+       SUMMARY CALCULATION
+    ============================================================ */
+    function recalculateSummary() {
+      let subtotal = 0;
+      let totalCount = 0;
+
+      document.querySelectorAll('.cart-item').forEach(item => {
+        const qtyInput = item.querySelector('.quantity-input');
+        const qty = parseInt(qtyInput?.value) || 1;
+        totalCount += qty;
+
+        const totalInput = item.querySelector('input[name="total"]');
+        if (totalInput) {
+          subtotal += parseFloat(totalInput.value) || 0;
+        } else {
+          const priceBtn = item.querySelector('.quantity-btn') || item.querySelector('.size-selector');
+          const price = parseFloat(priceBtn?.dataset.price ?? item.dataset.price ?? 0);
+          subtotal += price * qty;
         }
       });
-    });
 
-    // Order Summary Toggle (Mobile)
-    if (summaryToggle) {
-      summaryToggle.addEventListener('click', function() {
-        this.classList.toggle('collapsed');
-
-        if (orderSummaryContent) {
-          orderSummaryContent.classList.toggle('d-none');
+      const countEl = document.getElementById('item_number');
+      if (countEl) {
+        if (totalCount > 0) {
+          countEl.classList.add('bg-warning');
+          countEl.textContent = totalCount;
+          countEl.style.display = 'inline-block';
+        } else {
+          countEl.textContent = '';
+          countEl.style.display = 'none';
         }
+      }
 
-        // Toggle icon
-        const icon = this.querySelector('i');
-        if (icon) {
-          if (icon.classList.contains('bi-chevron-down')) {
-            icon.classList.remove('bi-chevron-down');
-            icon.classList.add('bi-chevron-up');
-          } else {
-            icon.classList.remove('bi-chevron-up');
-            icon.classList.add('bi-chevron-down');
-          }
-        }
+      const tax = 0;
+      const discount = 0;
+      const total = subtotal + tax - discount;
+
+      updateSummaryDisplay(subtotal, tax, discount, total);
+    }
+
+    function updateSummaryDisplay(subtotal, tax, discount, total) {
+      const subtotalEl = document.getElementById('cart_subtotal');
+      const taxEl = document.getElementById('cart_tax');
+      const discountEl = document.getElementById('cart_discount');
+      const totalEl = document.getElementById('cart_total');
+
+      if (subtotalEl) subtotalEl.textContent = formatMoney(subtotal);
+      if (taxEl) taxEl.textContent = formatMoney(tax);
+      if (discountEl) discountEl.textContent = formatMoney(discount);
+      if (totalEl) totalEl.textContent = formatMoney(total);
+    }
+
+    function formatMoney(value) {
+      return '₦' + Number(value).toLocaleString('en-NG', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
       });
     }
 
-    // Form Validation for multi-step checkout
-    const forms = document.querySelectorAll('.checkout-form-element');
-    forms.forEach(form => {
-      form.addEventListener('submit', function(e) {
-        e.preventDefault();
+    /* ============================================================
+       CLEAR CART MODAL HANDLER
+    ============================================================ */
+    const confirmClearBtn = document.getElementById('confirmClearCartBtn');
+    const cartContainer = document.querySelector('.cart-items-container');
+    const clearCartModalEl = document.getElementById('clearCartModal');
 
-        // Basic validation
-        const requiredFields = form.querySelectorAll('[required]');
-        let isValid = true;
+    if (confirmClearBtn) {
+      confirmClearBtn.addEventListener('click', async function () {
+        try {
+          confirmClearBtn.disabled = true;
+          confirmClearBtn.textContent = 'Clearing...';
 
-        requiredFields.forEach(field => {
-          if (!field.value.trim()) {
-            isValid = false;
-            field.classList.add('is-invalid');
-          } else {
-            field.classList.remove('is-invalid');
-          }
-        });
-
-        // If it's the final form and valid, show success message
-        if (isValid && form.closest('.checkout-form[data-form="4"]')) {
-          // Hide form fields
-          const formFields = form.querySelectorAll('.form-group, .review-sections, .form-check, .d-flex');
-          formFields.forEach(field => {
-            field.style.display = 'none';
-          });
-
-          // Show success message
-          const successMessage = form.querySelector('.success-message');
-          if (successMessage) {
-            successMessage.classList.remove('d-none');
-
-            // Add animation
-            successMessage.style.animation = 'fadeInUp 0.5s ease forwards';
-          }
-
-          // Simulate redirect after 3 seconds
-          setTimeout(() => {
-            // In a real application, this would redirect to an order confirmation page
-            console.log('Redirecting to order confirmation page...');
-          }, 3000);
-        }
-      });
-    });
-
-    // Function to navigate between steps
-    function navigateToStep(stepNumber) {
-      // Update steps
-      checkoutSteps.forEach(step => {
-        const stepNum = parseInt(step.getAttribute('data-step'));
-
-        if (stepNum < stepNumber) {
-          step.classList.add('completed');
-          step.classList.remove('active');
-        } else if (stepNum === stepNumber) {
-          step.classList.add('active');
-          step.classList.remove('completed');
-        } else {
-          step.classList.remove('active', 'completed');
-        }
-      });
-
-      // Update step connectors
-      const connectors = document.querySelectorAll('.step-connector');
-      connectors.forEach((connector, index) => {
-        if (index + 1 < stepNumber) {
-          connector.classList.add('completed');
-          connector.classList.remove('active');
-        } else if (index + 1 === stepNumber - 1) {
-          connector.classList.add('active');
-          connector.classList.remove('completed');
-        } else {
-          connector.classList.remove('active', 'completed');
-        }
-      });
-
-      // Show the corresponding form
-      checkoutForms.forEach(form => {
-        const formNum = parseInt(form.getAttribute('data-form'));
-
-        if (formNum === stepNumber) {
-          form.classList.add('active');
-
-          // Scroll to top of form on mobile
-          if (window.innerWidth < 768) {
-            form.scrollIntoView({
-              behavior: 'smooth',
-              block: 'start'
-            });
-          }
-        } else {
-          form.classList.remove('active');
-        }
-      });
-    }
-  }
-
-  // Function to initialize one-page checkout
-  function initOnePageCheckout() {
-    // Payment Method Selection for one-page checkout
-    const paymentOptions = document.querySelectorAll('.payment-option input[type="radio"]');
-
-    paymentOptions.forEach(option => {
-      option.addEventListener('change', function() {
-        // Update active class on payment options
-        document.querySelectorAll('.payment-option').forEach(opt => {
-          opt.classList.remove('active');
-        });
-
-        this.closest('.payment-option').classList.add('active');
-
-        // Show/hide payment details
-        const paymentId = this.id;
-        document.querySelectorAll('.payment-details').forEach(details => {
-          details.classList.add('d-none');
-        });
-
-        document.getElementById(`${paymentId}-details`).classList.remove('d-none');
-      });
-    });
-
-    // Form Validation for one-page checkout
-    const checkoutForm = document.querySelector('.checkout-form');
-
-    if (checkoutForm) {
-      checkoutForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        // Basic validation
-        const requiredFields = checkoutForm.querySelectorAll('[required]');
-        let isValid = true;
-
-        requiredFields.forEach(field => {
-          if (!field.value.trim()) {
-            isValid = false;
-            field.classList.add('is-invalid');
-
-            // Scroll to first invalid field
-            if (isValid === false) {
-              field.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-              });
-              field.focus();
-              isValid = null; // Set to null so we only scroll to the first invalid field
-            }
-          } else {
-            field.classList.remove('is-invalid');
-          }
-        });
-
-        // If form is valid, show success message
-        if (isValid === true) {
-          // Hide form sections except the last one
-          const sections = document.querySelectorAll('.checkout-section');
-          sections.forEach((section, index) => {
-            if (index < sections.length - 1) {
-              section.style.display = 'none';
+          const response = await fetch('/cart/clear', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': csrfToken,
+              'Accept': 'application/json'
             }
           });
 
-          // Hide terms checkbox and place order button
-          const termsCheck = document.querySelector('.terms-check');
-          const placeOrderContainer = document.querySelector('.place-order-container');
+          const data = await response.json();
 
-          if (termsCheck) termsCheck.style.display = 'none';
-          if (placeOrderContainer) placeOrderContainer.style.display = 'none';
+          if (response.ok && data.status === 'success') {
+            if (window.bootstrap && clearCartModalEl) {
+              const modalInstance = bootstrap.Modal.getInstance(clearCartModalEl);
+              if (modalInstance) modalInstance.hide();
+            }
 
-          // Show success message
-          const successMessage = document.querySelector('.success-message');
-          if (successMessage) {
-            successMessage.classList.remove('d-none');
-            successMessage.style.animation = 'fadeInUp 0.5s ease forwards';
-          }
-
-          // Scroll to success message
-          const orderReview = document.getElementById('order-review');
-          if (orderReview) {
-            orderReview.scrollIntoView({
-              behavior: 'smooth',
-              block: 'start'
-            });
-          }
-
-          // Simulate redirect after 3 seconds
-          setTimeout(() => {
-            // In a real application, this would redirect to an order confirmation page
-            console.log('Redirecting to order confirmation page...');
-          }, 3000);
-        }
-      });
-
-      // Add input event listeners to clear validation styling when user types
-      const formInputs = checkoutForm.querySelectorAll('input, select, textarea');
-      formInputs.forEach(input => {
-        input.addEventListener('input', function() {
-          if (this.value.trim()) {
-            this.classList.remove('is-invalid');
-          }
-        });
-      });
-    }
-  }
-
-  // Function to initialize input masks (common for both checkout types)
-  function initInputMasks() {
-    // Card number input mask (format: XXXX XXXX XXXX XXXX)
-    const cardNumberInput = document.getElementById('card-number');
-    if (cardNumberInput) {
-      cardNumberInput.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length > 16) value = value.slice(0, 16);
-
-        // Add spaces after every 4 digits
-        let formattedValue = '';
-        for (let i = 0; i < value.length; i++) {
-          if (i > 0 && i % 4 === 0) {
-            formattedValue += ' ';
-          }
-          formattedValue += value[i];
-        }
-
-        e.target.value = formattedValue;
-      });
-    }
-
-    // Expiry date input mask (format: MM/YY)
-    const expiryInput = document.getElementById('expiry');
-    if (expiryInput) {
-      expiryInput.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length > 4) value = value.slice(0, 4);
-
-        // Format as MM/YY
-        if (value.length > 2) {
-          value = value.slice(0, 2) + '/' + value.slice(2);
-        }
-
-        e.target.value = value;
-      });
-    }
-
-    // CVV input mask (3-4 digits)
-    const cvvInput = document.getElementById('cvv');
-    if (cvvInput) {
-      cvvInput.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length > 4) value = value.slice(0, 4);
-        e.target.value = value;
-      });
-    }
-
-    // Phone number input mask
-    const phoneInput = document.getElementById('phone');
-    if (phoneInput) {
-      phoneInput.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length > 10) value = value.slice(0, 10);
-
-        // Format as (XXX) XXX-XXXX
-        if (value.length > 0) {
-          if (value.length <= 3) {
-            value = '(' + value;
-          } else if (value.length <= 6) {
-            value = '(' + value.slice(0, 3) + ') ' + value.slice(3);
-          } else {
-            value = '(' + value.slice(0, 3) + ') ' + value.slice(3, 6) + '-' + value.slice(6);
-          }
-        }
-
-        e.target.value = value;
-      });
-    }
-
-    // ZIP code input mask (5 digits)
-    const zipInput = document.getElementById('zip');
-    if (zipInput) {
-      zipInput.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length > 5) value = value.slice(0, 5);
-        e.target.value = value;
-      });
-    }
-  }
-
-  // Function to handle promo code application (common for both checkout types)
-  function initPromoCode() {
-    const promoInput = document.querySelector('.promo-code input');
-    const promoButton = document.querySelector('.promo-code button');
-
-    if (promoInput && promoButton) {
-      promoButton.addEventListener('click', function() {
-        const promoCode = promoInput.value.trim();
-
-        if (promoCode) {
-          // Simulate promo code validation
-          // In a real application, this would make an API call to validate the code
-
-          // For demo purposes, let's assume "DISCOUNT20" is a valid code
-          if (promoCode.toUpperCase() === 'DISCOUNT20') {
-            // Show success state
-            promoInput.classList.add('is-valid');
-            promoInput.classList.remove('is-invalid');
-            promoButton.textContent = 'Applied';
-            promoButton.disabled = true;
-
-            // Update order total (in a real app, this would recalculate based on the discount)
-            const orderTotal = document.querySelector('.order-total span:last-child');
-            const btnPrice = document.querySelector('.btn-price');
-
-            if (orderTotal) {
-              // Apply a 20% discount
-              const currentTotal = parseFloat(orderTotal.textContent.replace('$', ''));
-              const discountedTotal = (currentTotal * 0.8).toFixed(2);
-              orderTotal.textContent = '$' + discountedTotal;
-
-              // Update button price if it exists
-              if (btnPrice) {
-                btnPrice.textContent = '$' + discountedTotal;
-              }
-
-              // Add discount line
-              const orderTotals = document.querySelector('.order-totals');
-              if (orderTotals) {
-                const discountElement = document.createElement('div');
-                discountElement.className = 'order-discount d-flex justify-content-between';
-                discountElement.innerHTML = `
-                <span>Discount (20%)</span>
-                <span>-$${(currentTotal * 0.2).toFixed(2)}</span>
+            if (cartContainer) {
+              cartContainer.innerHTML = `
+                <div class="text-center py-5">
+                    <p class="text-muted fs-5">Your cart is empty.</p>
+                    <a href="/shop" class="btn btn-dark mt-2">Continue Shopping</a>
+                </div>
               `;
-
-                // Insert before the total
-                const totalElement = document.querySelector('.order-total');
-                if (totalElement) {
-                  orderTotals.insertBefore(discountElement, totalElement);
-                }
-              }
             }
-          } else {
-            // Show error state
-            promoInput.classList.add('is-invalid');
-            promoInput.classList.remove('is-valid');
 
-            // Reset after 3 seconds
-            setTimeout(() => {
-              promoInput.classList.remove('is-invalid');
-            }, 3000);
+            recalculateSummary();
+          } else {
+            alert(data.message || 'Failed to clear cart.');
+          }
+        } catch (error) {
+          console.error('Error clearing cart:', error);
+          alert('An error occurred. Please try again.');
+        } finally {
+          confirmClearBtn.disabled = false;
+          confirmClearBtn.textContent = 'Yes, Clear Cart';
+        }
+      });
+    }
+
+    /* ============================================================
+       CHECKOUT & PLACE ORDER & HELPERS
+    ============================================================ */
+    function activateSpinner() {
+      const spinner = document.getElementById("loadingSpinner");
+      if (spinner) spinner.style.display = "flex";
+    }
+
+    function deactivateSpinner() {
+      const spinner = document.getElementById("loadingSpinner");
+      if (spinner) spinner.style.display = "none";
+    }
+
+    async function handleSuccess(response) {
+      activateSpinner();
+
+      const form = new FormData();
+      form.append("reference", response.reference);
+
+      try {
+        const verifyResponse = await get_general_data(
+          "/api/payment/verify",
+          "POST",
+          form
+        );
+
+        if (verifyResponse && verifyResponse.status === "success") {
+          deactivateSpinner();
+          const orderBtn = document.getElementById("place_order_btn");
+          if (orderBtn) orderBtn.disabled = true;
+
+          // Delete cart_token cookie
+          document.cookie = "cart_token=; max-age=0; path=/;";
+
+          if (typeof window.toast === 'function') {
+            window.toast("Payment successful!", "success");
+          }
+
+          let countdown = 3;
+          const interval = setInterval(() => {
+            if (typeof window.toast === 'function') {
+              window.toast(`Redirecting in ${countdown}...`, "info");
+            }
+            countdown--;
+
+            if (countdown < 0) {
+              clearInterval(interval);
+              if (orderBtn) orderBtn.disabled = false;
+              window.location.href = "/";
+            }
+          }, 1000);
+        } else {
+          deactivateSpinner();
+          if (typeof window.toast === 'function') {
+            window.toast(verifyResponse?.message || "Payment verification failed.", "error");
           }
         }
+      } catch (error) {
+        console.error(error);
+        deactivateSpinner();
+        if (typeof window.toast === 'function') {
+          window.toast("Payment verification network error.", "error");
+        }
+      }
+    }
+
+    function handleCancel() {
+      if (typeof window.toast === 'function') {
+        window.toast('Transaction canceled by the user.', 'error');
+      }
+    }
+
+    function handleLoad() {
+      if (typeof window.toast === 'function') {
+        window.toast('Transaction loading...', 'info');
+      }
+    }
+
+    function handleError(error) {
+      console.error(error);
+      if (typeof window.toast === 'function') {
+        window.toast(`Paystack Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function placeOrder() {
+      const form = document.getElementById('checkout_form');
+      if (!form) return;
+
+      const inputs = form.querySelectorAll('input,select,textarea');
+      for (const input of inputs) {
+        if (input.hasAttribute('required') && !input.value.trim()) {
+          input.classList.add('is-invalid');
+          if (typeof window.toast === 'function') {
+            window.toast("Please fill all required fields.", "error");
+          }
+          input.focus();
+          return;
+        } else {
+          input.classList.remove('is-invalid');
+        }
+      }
+
+      const formData = new FormData(form);
+      const cartToken = getCookie('cart_token');
+      if (cartToken) {
+        formData.append('cart_token', cartToken);
+      }
+
+      try {
+        activateSpinner();
+
+        const response = await sendFormData(formData, form.action, form.method);
+
+        if (response.status === "success") {
+          await paymentConfirmation(response.data.access_code);
+        } else {
+          if (typeof window.toast === 'function') window.toast(response.message, response.status);
+          deactivateSpinner();
+        }
+      } catch (error) {
+        console.error(error);
+        if (typeof window.toast === 'function') window.toast("Checkout failed", "error");
+        deactivateSpinner();
+      }
+    }
+
+    async function paymentConfirmation(accessCode) {
+      if (!accessCode) {
+        if (typeof window.toast === 'function') window.toast("Payment access code missing", "error");
+        deactivateSpinner();
+        return;
+      }
+
+      await loadPaystackScript();
+
+      try {
+        const popup = new PaystackPop();
+        popup.resumeTransaction(accessCode, {
+          onSuccess: handleSuccess,
+          onCancel: handleCancel,
+          onLoad: handleLoad,
+          onError: handleError
+        });
+      } catch (error) {
+        console.error(error);
+        if (typeof window.toast === 'function') window.toast("Could not initialize payment", "error");
+        deactivateSpinner();
+      }
+    }
+
+    function loadPaystackScript() {
+      return new Promise((resolve, reject) => {
+        if (window.PaystackPop) {
+          resolve();
+          return;
+        }
+        const script = document.createElement("script");
+        script.src = "https://js.paystack.co/v2/inline.js";
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error("Failed to load Paystack script"));
+        document.head.appendChild(script);
       });
     }
   }
 
-  // Function to initialize Bootstrap tooltips
-  function initTooltips() {
-    // Check if Bootstrap's tooltip function exists
-    if (typeof bootstrap !== 'undefined' && typeof bootstrap.Tooltip !== 'undefined') {
-      const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-      const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-    } else {
-      // Fallback for when Bootstrap JS is not loaded
-      const cvvHint = document.querySelector('.cvv-hint');
-      if (cvvHint) {
-        cvvHint.addEventListener('mouseenter', function() {
-          this.setAttribute('data-original-title', this.getAttribute('title'));
-          this.setAttribute('title', '');
-        });
-
-        cvvHint.addEventListener('mouseleave', function() {
-          this.setAttribute('title', this.getAttribute('data-original-title'));
-        });
-      }
-    }
+  // Initialize ecommerce cart tools if function is defined
+  if (typeof ecommerceCartTools === 'function') {
+    ecommerceCartTools();
   }
-
-  /**
-   * Initiate Pure Counter
-   */
-  new PureCounter();
-
-  /**
-   * Frequently Asked Questions Toggle
-   */
-  document.querySelectorAll('.faq-item h3, .faq-item .faq-toggle, .faq-item .faq-header').forEach((faqItem) => {
-    faqItem.addEventListener('click', () => {
-      faqItem.parentNode.classList.toggle('faq-active');
-    });
-  });
 
 })();

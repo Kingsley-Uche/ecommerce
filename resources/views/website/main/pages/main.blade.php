@@ -16,7 +16,7 @@
     --clay:     #b5562e;
     --clay-dim: #e9d2c5;
     --moss:     #5c6650;
-    --radius:   2px;
+    --radius:   5px;
     --font-display: 'Fraunces', Georgia, serif;
     --font-mono:    'Space Grotesk', 'Courier New', monospace;
     --ease: cubic-bezier(.4,0,.2,1);
@@ -165,7 +165,70 @@ button { font-family: inherit; }
 }
 .product-cell:hover { background: var(--paper-2); }
 
-/* ... (keep all your existing .stock-ledger, .pc-image, .pc-name, etc. styles) ... */
+/* ============================================================
+   PREMIUM E-COMMERCE BUTTON STYLES
+   ============================================================ */
+.details-btn,
+.add-cart-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.65rem 1rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: var(--radius);
+    transition: all 0.25s var(--ease);
+    cursor: pointer;
+    text-align: center;
+    white-space: nowrap;
+    outline: none;
+}
+
+/* Secondary / Details Button Styling */
+.details-btn {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+}
+
+.details-btn:hover {
+    background: var(--paper);
+    border-color: var(--ink-mid);
+    color: var(--ink);
+}
+
+/* Primary / Add to Cart Button Styling */
+.add-cart-btn {
+    background: var(--ink);
+    color: var(--paper);
+    border: 1px solid var(--ink);
+    flex: 1;
+}
+
+.add-cart-btn:hover:not(:disabled) {
+    background: var(--clay);
+    border-color: var(--clay);
+    color: white;
+    box-shadow: 0 4px 12px rgba(181, 86, 46, 0.25);
+    transform: translateY(-1px);
+}
+
+.add-cart-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+/* Disabled / Sold Out State */
+.add-cart-btn:disabled {
+    background: var(--paper-2);
+    color: var(--ink-soft);
+    border-color: var(--line);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
 
 /* ============================================================
    FOOTER
@@ -176,8 +239,6 @@ button { font-family: inherit; }
     display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 2.5rem;
     padding-bottom: 2.5rem; border-bottom: 1px solid var(--line);
 }
-
-/* ... keep your footer styles ... */
 
 /* ============================================================
    RESPONSIVE
@@ -335,7 +396,7 @@ button { font-family: inherit; }
                             <div class="pc-bottom">
                                 <span class="pc-price">₦{{ number_format($product['price'], 2) }}</span>
 
-                                <div style="display:flex;gap:.5rem;align-items:center;">
+                                <div style="display:flex;gap:.5rem;align-items:center;width:100%;">
                                     {{-- Details link — takes user to the full product page --}}
                                     <a href="{{ route('product.show', ['id' => $product['id']]) }}"
                                        class="details-btn">
@@ -343,7 +404,7 @@ button { font-family: inherit; }
                                     </a>
 
                                     {{-- Add to cart --}}
-                                    <form method="post" action="{{ route('api.cart.add') }}" class="cart-form">
+                                    <form method="post" action="{{ route('api.cart.add') }}" class="cart-form" style="display:flex;flex:1;">
                                         @csrf
                                         <input type="hidden" name="product_name" value="{{ $product['name'] }}">
                                         <input type="hidden" name="product_id"   value="{{ $product['id'] }}">

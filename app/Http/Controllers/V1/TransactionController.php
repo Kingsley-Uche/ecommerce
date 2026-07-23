@@ -673,6 +673,7 @@ if($userId && $cartToken){
         return back()->withErrors(["message" => "Cart is empty."]);
     }
 
+
     // Fetch shop/store details
     $shop_data = StoreDetailsModel::select(
         'store_name',
@@ -682,8 +683,7 @@ if($userId && $cartToken){
         'logo_path',
         'tagline',
         'social_links',
-        'social_icons',
-        'products'
+        'social_icons'
     )->first();
 
     return view('website.main.pages.checkout', compact('cartItems', 'shop_data'));

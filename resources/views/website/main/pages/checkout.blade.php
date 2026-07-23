@@ -31,7 +31,7 @@
 
           <div class="checkout-container" data-aos="fade-up">
 
-            <form class="checkout-form" method="POST" action="{{ route('payment.initiate') }}" id="checkout_form" >
+            <form class="checkout-form" method="POST" action="{{ route('payment.initiate') }}" id="checkout_form">
               @csrf
 
               <!-- 1. CUSTOMER INFORMATION -->
@@ -94,14 +94,13 @@
                            placeholder="e.g Abuja, Nigeria"
                            required>
                   </div>
+
                   <div class="form-group">
                     <label for="extra_information">Additional Information</label>
                     <input type="text" class="form-control"
                            name="extra_information" id="extra_information"
                            placeholder="I need two red...">
                   </div>
-                  
-
 
                 </div>
               </div>
@@ -126,7 +125,7 @@
                     </label>
                   </div>
 
-                  <button type="submit" class="btn btn-dark w-100 py-3" id ="place_order_btn">
+                  <button type="submit" class="btn btn-dark w-100 py-3" id="place_order_btn">
                     Place Order
                   </button>
 
@@ -137,8 +136,7 @@
               @foreach ($cartItems as $item)
                 <input type="hidden" name="product_id[]" value="{{ $item->product_id }}">
                 <input type="hidden" name="quantity[]" value="{{ $item->quantity }}">
-                 <input type="hidden" name="size[]" value="{{ $item->size }}">
-
+                <input type="hidden" name="size[]" value="{{ $item->size }}">
               @endforeach
 
             </form>
@@ -160,47 +158,42 @@
             <div class="order-summary-content">
 
               <div class="order-items">
-                <?php
-                $total = (int)0;
-                ?>
+                @php
+                    $total = 0;
+                @endphp
 
                 @foreach ($cartItems as $item)
-                <div class="order-item">
-                  <div class="order-item-image">
+                  @php
+                      $price = $item->product->price ?? 0;
+                      $sub_total = $price * $item->quantity;
+                      $total += $sub_total;
 
-                    {{-- FIX: Your product table does not have image field --}}
-                    <?php
-                    $image = $item->product->images->first()->image_path ?? 'images/default.png';
-                    ?>
-                    <img src="{{ asset('storage/'.$image) }}" alt="{{ $item->product->name }}"  class="img-fluid">
-                  </div>
+                      $imagePath = optional($item->product->images->first())->image_path ?? 'images/default.png';
+                  @endphp
 
-                  <div class="order-item-details">
-                    <h4>{{ $item->product->name }}</h4>
-                    <?php
-                    $sub_total = $item->product->price*$item->quantity;
-                    $total = +$sub_total;
-                    ?>
+                  <div class="order-item">
+                    <div class="order-item-image">
+                      <img src="{{ asset('storage/' . $imagePath) }}" alt="{{ $item->product->name ?? 'Product' }}" class="img-fluid">
+                    </div>
 
-                    <div class="order-item-price">
-                      <span class="quantity">{{ $item->quantity }} ×</span>
-                      <span class="price">₦{{ number_format((float)$item->product->price, 2) }}</span>
+                    <div class="order-item-details">
+                      <h4>{{ $item->product->name ?? 'Unknown Product' }}</h4>
+
+                      <div class="order-item-price">
+                        <span class="quantity">{{ $item->quantity }} ×</span>
+                        <span class="price">₦{{ number_format((float)$price, 2) }}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
                 @endforeach
 
               </div>
 
               <div class="order-totals mt-3">
-
-              
-
                 <div class="order-total d-flex justify-content-between fw-bold">
                   <span>Total</span>
                   <span>₦{{ number_format($total, 2) }}</span>
                 </div>
-
               </div>
 
             </div>
