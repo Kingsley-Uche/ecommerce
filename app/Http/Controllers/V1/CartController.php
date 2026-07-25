@@ -8,6 +8,7 @@ use App\Models\CartModel;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
@@ -106,51 +107,125 @@ class CartController extends Controller
      * Update the quantity (and optionally size) of one or more cart items.
      * Setting quantity to 0 removes that item.
      */
-    public function update(Request $request)
-    {
-        $data = $request->validate([
-            'product_id'   => 'required|array',
-            'product_id.*' => 'required|integer',
-            'quantity'     => 'required|array',
-            'quantity.*'   => 'required|integer|min:0',
-            'size'         => 'sometimes|array',
-            'size.*'       => 'nullable|string|max:10',
-        ]);
+    // public function update(Request $request)
+    // {
+    //     $data = $request->validate([
+    //         'product_id'   => 'required|array',
+    //         'product_id.*' => 'required|integer',
+    //         'quantity'     => 'required|array',
+    //         'quantity.*'   => 'required|integer|min:0',
+    //         'size'         => 'sometimes|array',
+    //         'size.*'       => 'nullable|string|max:10',
+    //     ]);
 
-        [$userId, $cartToken] = $this->resolveCartOwner($request);
+    //     [$userId, $cartToken] = $this->resolveCartOwner($request);
 
-        $cartItems = CartModel::query()
+    //     $cartItems = CartModel::query()
+    //         ->when($userId, fn ($q) => $q->where('user_id', $userId))
+    //         ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken))
+    //         ->whereIn('product_id', $data['product_id'])
+    //         ->get()
+    //         ->keyBy('product_id');
+
+    //     if ($cartItems->isEmpty()) {
+    //         return response()->json([
+    //             'status'  => 'error',
+    //             'message' => 'Items not found in cart',
+    //         ], 404);
+    //     }
+
+    //     foreach ($data['product_id'] as $index => $productId) {
+    //         $item = $cartItems->get($productId);
+
+    //         if (!$item) {
+    //             continue;
+    //         }
+
+    //         $newQty  = $data['quantity'][$index];
+    //         $newSize = $data['size'][$index] ?? $item->size;
+
+    //         if ($newQty === 0) {
+    //             $item->delete();
+    //         } else {
+    //             $item->update([
+    //                 'quantity' => $newQty,
+    //                 'size'     => $newSize,
+    //             ]);
+    //         }
+    //     }
+
+    //     return response()->json([
+    //         'status'  => 'success',
+    //         'message' => 'Cart updated successfully',
+    //         'count'   => $this->cartCount($userId, $cartToken),
+    //     ], 200);
+    // }
+public function update(Request $request)
+{
+    $data = $request->validate([
+        'items'              => 'required|array|min:1',
+        'items.*.product_id' => 'required|integer',
+        'items.*.quantity'   => 'required|integer|min:0',
+        'items.*.size'       => 'nullable|string|max:10',
+    ]);
+
+    [$userId, $cartToken] = $this->resolveCartOwner($request);
+
+    $cartItemIds = array_keys($data['items']);
+
+    return DB::transaction(function () use ($userId, $cartToken, $cartItemIds, $data) {
+        // Fetch valid IDs that strictly belong to this user/cart to prevent IDOR attacks
+        $validItems = CartModel::query()
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when(!$userId, fn ($q) => $q->where('cart_token', $cartToken))
-            ->whereIn('product_id', $data['product_id'])
+            ->whereIn('id', $cartItemIds)
             ->get()
-            ->keyBy('product_id');
+            ->keyBy('id');
 
-        if ($cartItems->isEmpty()) {
+        if ($validItems->isEmpty()) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Items not found in cart',
+                'message' => 'No valid items found in cart',
             ], 404);
         }
 
-        foreach ($data['product_id'] as $index => $productId) {
-            $item = $cartItems->get($productId);
+        $idsToDelete = [];
+        $updatesToProcess = [];
 
-            if (!$item) {
+        foreach ($data['items'] as $cartItemId => $itemData) {
+            // Ensure the item actually belongs to the authenticated context
+            if (!$validItems->has($cartItemId)) {
                 continue;
             }
 
-            $newQty  = $data['quantity'][$index];
-            $newSize = $data['size'][$index] ?? $item->size;
+            $item = $validItems->get($cartItemId);
+            $newQty = (int) $itemData['quantity'];
+            $newSize = $itemData['size'] ?? $item->size;
 
             if ($newQty === 0) {
-                $item->delete();
+                $idsToDelete[] = $cartItemId;
             } else {
-                $item->update([
+                // Collect updates for batch processing or safe individual updates
+                $updates[] = [
+                    'id' => $cartItemId,
                     'quantity' => $newQty,
-                    'size'     => $newSize,
-                ]);
+                    'size' => $newSize,
+                ];
             }
+        }
+
+        // 1. Perform bulk deletion for zero-quantity items
+        if (!empty($idsToDelete)) {
+            CartModel::whereIn('id', $idsToDelete)->delete();
+        }
+
+        // 2. Perform efficient bulk update using Laravel's upsert or case-when statements, 
+        // or loop safely since these are only the filtered subset IDs.
+        foreach ($updates ?? [] as $update) {
+            CartModel::where('id', $update['id'])->update([
+                'quantity' => $update['quantity'],
+                'size'     => $update['size'],
+            ]);
         }
 
         return response()->json([
@@ -158,8 +233,8 @@ class CartController extends Controller
             'message' => 'Cart updated successfully',
             'count'   => $this->cartCount($userId, $cartToken),
         ], 200);
-    }
-
+    });
+}
     /**
      * Update only the size of a single cart item.
      * Called by the size-selector dropdown via AJAX (window.CART_SIZE_URL).
@@ -285,7 +360,7 @@ public function clearCart(Request $request)
     {
         
         $userId    = auth()->id();
-        $cartToken =strip_tags($cart_id);
+        $cartToken =strip_tags($request->cart_token);
         
 
         $cartItems = CartModel::query()

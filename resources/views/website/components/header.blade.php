@@ -125,7 +125,8 @@
             </a>
 
             {{-- Cart --}}
-            <a href="#" id="cart_icon" data-cart-url="{{ route('cart.view', ['cart_id' => 0]) }}" class="header-action-btn">
+            <a href="#" id="cart_icon" data-cart-url="/api/load/" class="header-action-btn">
+              <!-- Good: Only contains the root route path -->
               <i class="bi bi-cart3" id="cart_item"></i>
               <span class="badge text-small text-white" id="item_number"></span>
             </a>
@@ -183,14 +184,91 @@
 </header>
 
 <script>
+// /* ============================================================
+//     CART BADGE — loads real count on page load, and exposes a
+//     helper any add-to-cart form/button can call after a response.
+//     ============================================================ */
+// (function () {
+//     const badge = document.getElementById('item_number');
+//     const cart_icon = document.getElementById('cart_icon');
+//     if (!badge) return;
+
+//     function setCount(count) {
+//         const n = parseInt(count, 10) || 0;
+//         badge.textContent = n;
+//         badge.style.display = n > 0 ? '' : 'none';
+//     }
+
+//     function setCartId(cartToken) {
+//         if (cartToken && cart_icon) {
+//             const urlTemplate = "{{ route('cart.view', ['cart_id' => '__CART_ID__']) }}";
+//             const newUrl = urlTemplate.replace('__CART_ID__', encodeURIComponent(cartToken));
+//             cart_icon.setAttribute('data-cart-url', newUrl);
+//             cart_icon.setAttribute('href', newUrl);
+//         }
+//     }
+
+//     function loadCartCount() {
+//         fetch("{{ route('api.cart.get') }}", {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json',
+//                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+//                 'Accept': 'application/json',
+//             },
+//             body: JSON.stringify({}),
+//         })
+//             .then(res => res.json())
+//             .then(data => {
+//                 setCount(data.count);
+//                 if (data.cart_token) {
+//                     setCartId(data.cart_token);
+//                 }
+//             })
+//             .catch(() => setCount(0));
+//     }
+
+//     window.updateCartBadge = setCount;
+//     window.updateCartToken = setCartId;
+
+//     document.addEventListener('DOMContentLoaded', loadCartCount);
+// })();
+
 /* ============================================================
-    CART BADGE — loads real count on page load, and exposes a
-    helper any add-to-cart form/button can call after a response.
-    ============================================================ */
+   CART BADGE & STATE SYNCHRONIZATION
+   ============================================================ */
 (function () {
     const badge = document.getElementById('item_number');
     const cart_icon = document.getElementById('cart_icon');
-    if (!badge) return;
+    if (!badge || !cart_icon) return;
+
+    // LocalStorage helper for reading stored tokens with expiration support
+    function getStoredValue(name) {
+        const readBrowserCookie = (cookieName) => {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${cookieName}=`);
+            if (parts.length === 2) return parts.pop().split(";").shift();
+            return null;
+        };
+
+        let val = readBrowserCookie(name);
+        if (val) return val;
+
+        const itemStr = localStorage.getItem(name);
+        if (!itemStr) return null;
+
+        try {
+            const item = JSON.parse(itemStr);
+            const now = new Date().getTime();
+            if (item.expiry && now > item.expiry) {
+                localStorage.removeItem(name);
+                return null;
+            }
+            return item.value !== undefined ? item.value : item;
+        } catch (e) {
+            return itemStr; 
+        }
+    }
 
     function setCount(count) {
         const n = parseInt(count, 10) || 0;
@@ -199,15 +277,27 @@
     }
 
     function setCartId(cartToken) {
-        if (cartToken && cart_icon) {
-            const urlTemplate = "{{ route('cart.view', ['cart_id' => '__CART_ID__']) }}";
-            const newUrl = urlTemplate.replace('__CART_ID__', encodeURIComponent(cartToken));
-            cart_icon.setAttribute('data-cart-url', newUrl);
-            cart_icon.setAttribute('href', newUrl);
-        }
+        if (!cartToken || !cart_icon) return;
+
+        let rawUrl = cart_icon.dataset.cartUrl || "{{ route('cart.view', ['cart_id' => '__CART_ID__']) }}";
+        
+        // Clean up any old parameters or placeholders
+        rawUrl = rawUrl.split('?')[0];
+        const cleanBaseUrl = rawUrl.replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, '').replace(/\/0$/, '');
+
+        const newUrl = `${cleanBaseUrl.replace(/\/+$/, '')}/${encodeURIComponent(cartToken)}`;
+        cart_icon.setAttribute('data-cart-url', newUrl);
+        cart_icon.setAttribute('href', newUrl);
     }
 
-    function loadCartCount() {
+    function initializeCartState() {
+        // 1. Check local storage / cookies immediately on load to prevent delay
+        const localToken = getStoredValue('cart_token');
+        if (localToken) {
+            setCartId(localToken);
+        }
+
+        // 2. Fetch latest count/token from server
         fetch("{{ route('api.cart.get') }}", {
             method: 'POST',
             headers: {
@@ -215,13 +305,18 @@
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
                 'Accept': 'application/json',
             },
-            body: JSON.stringify({}),
+            body: JSON.stringify({ cart_token: localToken }),
         })
             .then(res => res.json())
             .then(data => {
                 setCount(data.count);
-                if (data.cart_token) {
-                    setCartId(data.cart_token);
+                const serverToken = data.cart_token || data.cartToken;
+                if (serverToken) {
+                    setCartId(serverToken);
+                    // Sync to storage if needed
+                    if (typeof setStoredValue === 'function') {
+                        setStoredValue('cart_token', serverToken, 30);
+                    }
                 }
             })
             .catch(() => setCount(0));
@@ -230,8 +325,8 @@
     window.updateCartBadge = setCount;
     window.updateCartToken = setCartId;
 
-    document.addEventListener('DOMContentLoaded', loadCartCount);
+    document.addEventListener('DOMContentLoaded', initializeCartState);
 })();
-
+<
 
 </script>

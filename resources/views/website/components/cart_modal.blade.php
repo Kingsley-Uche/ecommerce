@@ -60,14 +60,14 @@
 
                                         <div id="cart_items_container">
 
-                                            @forelse($cartItems as $item)
+                                            @forelse($cartItems as $index => $item)
 
                                                 @php
                                                     $product = $item['product'] ?? [];
                                                     $qty = $item['quantity'] ?? 1;
                                                     $selectedSize = $item['size'] ?? '';
                                                     $productId = $product['id'] ?? null;
-                                                    $cartItemId = $item['id'] ?? null;
+                                                    $cartItemId = $item['id'] ?? $index;
                                                     $productName = $product['name'] ?? 'Unknown Product';
                                                     $productDescription = $product['description'] ?? null;
                                                     $price = $product['price'] ?? 0;
@@ -76,22 +76,23 @@
                                                     $image = optional($images->first())->image_path;
                                                 @endphp
 
-                                                <div class="cart-item" data-product-id="{{ $productId }}">
+                                                <div class="cart-item border-bottom py-3" data-product-id="{{ $productId }}" data-cart-item-id="{{ $cartItemId }}">
                                                     <div class="row align-items-center">
 
                                                         <!-- Product Information -->
                                                         <div class="col-lg-6 col-12 mt-3 mt-lg-0 mb-lg-0 mb-3">
                                                             <div class="product-info d-flex align-items-center">
-                                                                <div class="product-image">
+                                                                <div class="product-image me-3">
                                                                     <img
                                                                         src="{{ $image ? asset('storage/'.$image) : asset('assets/img/default-product.png') }}"
-                                                                        class="img-fluid"
+                                                                        class="img-fluid rounded"
+                                                                        style="max-width: 70px;"
                                                                         loading="lazy"
                                                                         alt="{{ $productName }}">
                                                                 </div>
 
                                                                 <div class="product-details">
-                                                                    <h6 class="product-title">
+                                                                    <h6 class="product-title mb-1">
                                                                         {{ $productName }}
                                                                     </h6>
 
@@ -103,24 +104,24 @@
 
                                                                     <div class="product-meta">
                                                                         @if(!empty($product['color']))
-                                                                            <span class="product-color me-2">
+                                                                            <span class="product-color me-2 text-muted small">
                                                                                 Color: {{ $product['color'] }}
                                                                             </span>
                                                                         @endif
 
-                                                                        <span class="product-size">
+                                                                        <span class="product-size text-muted small">
                                                                             Size:
                                                                             <select
-                                                                                name="size[]"
+                                                                                name="items[{{ $cartItemId }}][size]"
                                                                                 class="form-select form-select-sm d-inline-block w-auto ms-1 size-selector"
                                                                                 data-product-id="{{ $productId }}"
                                                                                 data-cart-item-id="{{ $cartItemId }}">
 
-                                                                                @foreach(['XS','S','M','L','XL','XXL'] as $size)
+                                                                                @foreach(['XS','S','M','L','XL','XXL'] as $sizeOption)
                                                                                     <option
-                                                                                        value="{{ $size }}"
-                                                                                        {{ $selectedSize == $size ? 'selected' : '' }}>
-                                                                                        {{ $size }}
+                                                                                        value="{{ $sizeOption }}"
+                                                                                        {{ $selectedSize == $sizeOption ? 'selected' : '' }}>
+                                                                                        {{ $sizeOption }}
                                                                                     </option>
                                                                                 @endforeach
                                                                             </select>
@@ -129,8 +130,9 @@
 
                                                                     <button
                                                                         type="button"
-                                                                        class="remove-item btn btn-link text-danger p-0 mt-2"
+                                                                        class="remove-item btn btn-link text-danger p-0 mt-2 small"
                                                                         data-product-id="{{ $productId }}"
+                                                                        data-cart-item-id="{{ $cartItemId }}"
                                                                         aria-label="Remove {{ $productName }}">
                                                                         <i class="bi bi-trash"></i> Remove
                                                                     </button>
@@ -160,19 +162,14 @@
                                                                 <input
                                                                     type="number"
                                                                     class="quantity-input form-control form-control-sm text-center mx-1"
-                                                                    name="quantity[]"
+                                                                    name="items[{{ $cartItemId }}][quantity]"
                                                                     value="{{ $qty }}"
                                                                     min="1"
                                                                     style="width: 50px;">
 
                                                                 <input
                                                                     type="hidden"
-                                                                    name="initial_quantity[]"
-                                                                    value="{{ $qty }}">
-
-                                                                <input
-                                                                    type="hidden"
-                                                                    name="product_id[]"
+                                                                    name="items[{{ $cartItemId }}][product_id]"
                                                                     value="{{ $productId }}">
 
                                                                 <button
@@ -185,9 +182,9 @@
                                                         </div>
 
                                                         <!-- Total -->
-                                                        <div class="col-lg-2 col-12 mt-3 mt-lg-0 text-center mr-1">
+                                                        <div class="col-lg-2 col-12 mt-3 mt-lg-0 text-center">
                                                             <div class="item-total">
-                                                                <span class="badge rounded-pill bg-dark px-1 py-2 fs-6 item-total-badge" data-price="{{ $price }}">
+                                                                <span class="badge rounded-pill bg-dark px-2 py-2 fs-6 item-total-badge" data-price="{{ $price }}">
                                                                     ₦{{ number_format($total, 2) }}
                                                                 </span>
                                                             </div>
@@ -309,8 +306,8 @@
                                     <div class="summary-total d-flex justify-content-between border-top pt-3 mt-3 fw-bold fs-5">
                                         <span class="summary-label">Total</span>
                                         <span class="summary-value" id="cart_total"> 
-                                             ₦{{ number_format(collect($cartItems)->sum(fn($item) => ($item['product']['price'] ?? 0) * ($item['quantity'] ?? 1)), 2) }}
-                                            </span>
+                                            ₦{{ number_format(collect($cartItems)->sum(fn($item) => ($item['product']['price'] ?? 0) * ($item['quantity'] ?? 1)), 2) }}
+                                        </span>
                                     </div>
 
                                     <!-- Checkout Button -->
@@ -322,7 +319,7 @@
 
                                     <!-- Continue Shopping -->
                                     <div class="continue-shopping mt-2">
-                                        <a href="#" class="btn btn-link text-decoration-none w-100 cart_update text-dark" data-info="continue">
+                                        <a href="#" class="btn btn-link text-decoration-none w-100 cart_update text-dark" data-info="continue" data-bs-dismiss="modal">
                                             <i class="bi bi-arrow-left"></i> Continue Shopping
                                         </a>
                                     </div>

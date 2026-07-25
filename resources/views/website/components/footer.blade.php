@@ -155,12 +155,6 @@
 <!-- SweetAlert + Your JS -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
 <script src="{{ asset('assets/js/swal-toast.js') }}" defer></script>
-
-<script src="{{ asset('assets/js/main.js') }}"></script>
-<script src="{{ asset('assets/js/inner.js') }}"></script>
-<script src="{{ asset('assets/js/cart-modal-patches.js') }}" defer></script>
-<script src="{{ asset('assets/js/cart-remove-patches.js') }}" defer></script>
-
 <!-- Globals -->
 <script>
   const CART_ADD_URL = "{{ route('api.cart.add') }}";
@@ -168,6 +162,13 @@
   window.CART_SIZE_URL = "{{ route('cart.update.size') }}";
    window.CART_CLEAR_URL = "{{ route('api.cart.clear') }}";
 </script>
+
+<script src="{{ asset('assets/js/main.js') }}"></script>
+<script src="{{ asset('assets/js/inner.js') }}"></script>
+<script src="{{ asset('assets/js/cart-modal-patches.js') }}" defer></script>
+<script src="{{ asset('assets/js/cart-remove-patches.js') }}" defer></script>
+
+
 <div id="loadingSpinner">
   <div class="spinner"></div>
 </div>

@@ -298,16 +298,50 @@
     /* ============================================================
        COOKIE HELPER
     ============================================================ */
-    function getCookie(name) {
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      return parts.length === 2 ? parts.pop().split(';')[0] : null;
-    }
+ /* --------------------------------------------
+   GET CART TOKEN (COOKIE + LOCALSTORAGE FALLBACK)
+-------------------------------------------- */
+/* --------------------------------------------
+   REUSABLE STORAGE GETTER (COOKIE + LOCALSTORAGE WITH EXPIRY)
+-------------------------------------------- */
+function getStoredValue(name) {
+    // 1. Read from actual browser cookies first
+    const readBrowserCookie = (cookieName) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${cookieName}=`);
+        if (parts.length === 2) return parts.pop().split(";").shift();
+        return null;
+    };
 
+    let val = readBrowserCookie(name);
+    if (val) return val;
+
+    // 2. Fall back to localStorage with expiration check
+    const itemStr = localStorage.getItem(name);
+    if (!itemStr) return null;
+
+    try {
+        const item = JSON.parse(itemStr);
+        const now = new Date().getTime();
+
+        // Check if the stored item has an expiry and if it has passed
+        if (item.expiry && now > item.expiry) {
+            localStorage.removeItem(name); // Clean up expired data
+            return null;
+        }
+
+        // Return the value (handles both structured objects and plain strings)
+        return item.value !== undefined ? item.value : item;
+    } catch (e) {
+        // Fallback if it was stored as a plain string
+        return itemStr; 
+    }
+}
     /* ============================================================
        CART REQUEST
     ============================================================ */
     async function updateCart(url, method, formData) {
+      
       const options = {
         method: method.toUpperCase(),
         headers: {
@@ -332,6 +366,7 @@
           const countEl = document.getElementById('item_number');
           if (countEl) {
             countEl.textContent = json.count;
+            
           }
         }
 
@@ -352,7 +387,7 @@
       const form = document.getElementById('update_cart_form');
       if (!form) return;
       const formData = new FormData(form);
-      const cartToken = getCookie('cart_token');
+      const cartToken = getStoredValue('cart_token');
       if (cartToken) {
         formData.append('cart_token', cartToken);
       }
@@ -361,11 +396,12 @@
       if (!json) return;
       
       if (typeof window.toast === 'function') {
+        console.log(json);
         window.toast(json.message, json.status);
       }
 
       if (button.dataset.info === "checkout") {
-        const token = getCookie('cart_token');
+        const token = getStoredValue('cart_token');
         window.location.href = `/payment/checkout/${encodeURIComponent(token)}`;
         return;
       }
@@ -590,6 +626,7 @@
       if (spinner) spinner.style.display = "none";
     }
 
+
     async function handleSuccess(response) {
       activateSpinner();
 
@@ -608,8 +645,23 @@
           const orderBtn = document.getElementById("place_order_btn");
           if (orderBtn) orderBtn.disabled = true;
 
-          // Delete cart_token cookie
-          document.cookie = "cart_token=; max-age=0; path=/;";
+          // Clear cart token, local storage, and synchronize frontend state
+          document.cookie = "cart_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+          localStorage.setItem('cart_count', 0);
+
+          const resetData = {
+              count: verifyResponse.count ?? 0,
+              cart_token: null,
+              data: [],
+              subtotal: 0,
+              tax: 0,
+              discount: 0,
+              total: 0
+          };
+
+          if (typeof syncCartState === 'function') {
+              syncCartState(resetData);
+          }
 
           if (typeof window.toast === 'function') {
             window.toast("Payment successful!", "success");
@@ -618,7 +670,7 @@
           let countdown = 3;
           const interval = setInterval(() => {
             if (typeof window.toast === 'function') {
-              window.toast(`Redirecting in ${countdown}...`, "info");
+              window.toast(`Redirecting in ${countdown}...`, "black");
             }
             countdown--;
 
@@ -642,7 +694,6 @@
         }
       }
     }
-
     function handleCancel() {
       if (typeof window.toast === 'function') {
         window.toast('Transaction canceled by the user.', 'error');
@@ -681,7 +732,7 @@
       }
 
       const formData = new FormData(form);
-      const cartToken = getCookie('cart_token');
+      const cartToken = getStoredValue('cart_token');
       if (cartToken) {
         formData.append('cart_token', cartToken);
       }

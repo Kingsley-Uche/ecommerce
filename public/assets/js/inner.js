@@ -1,20 +1,42 @@
-document.addEventListener('DOMContentLoaded', function () {
-    const cartToken = getCookie('cart_token');
-    const el = document.getElementById('cart_icon');
 
+
+document.addEventListener('DOMContentLoaded', function () {
+    const el = document.getElementById('cart_icon');
     if (!el) return;
 
-    // Update cart link if token exists
-    if (cartToken) {
-        el.href = el.dataset.cartUrl + cartToken;
+    // Helper to get and apply the latest token cleanly
+    function updateCartLink() {
+        const cartToken = getStoredValue('cart_token');
+        if (!cartToken) return;
 
+        let rawUrl = el.dataset.cartUrl || '/api/load';
+        
+        // 1. Remove query parameters if present
+        rawUrl = rawUrl.split('?')[0];
+
+        // 2. Strip any trailing UUID/token from the path to get a clean base
+        const cleanBaseUrl = rawUrl.replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, '');
+
+        // 3. Set the href cleanly with ONLY the current token
+        el.href = `${cleanBaseUrl.replace(/\/+$/, '')}/${encodeURIComponent(cartToken)}`;
+    }
+
+    // Run on load
+    updateCartLink();
+
+    // Also update right before click just in case the token changed dynamically
+    el.addEventListener('click', function () {
+        updateCartLink();
+    });
+
+    // Initial API fetch sync
+    const cartToken = getStoredValue('cart_token');
+    if (cartToken) {
         const url = window.location.origin + "/api/cart";
         const method = "POST";
-
         const formData = new FormData();
         formData.append("cart_token", cartToken);
 
-        // Fixed: Call get_general_data and sync state instead of undefined updateCartCount
         get_general_data(url, method, formData).then(json => {
             if (json) {
                 if (typeof syncCartState === 'function') {
@@ -27,15 +49,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
-
-
-/* --------------------------------------------
-   SEND POST/GET REQUEST
--------------------------------------------- */
-async function sendFormData(formData, url, method) {
-    const cartToken = getCookie("cart_token");
+async function sendFormData(formData, url, method = 'POST') {
+    const uppercaseMethod = method.toUpperCase();
+    const cartToken = typeof getStoredValue === 'function' ? getStoredValue("cart_token") : null;
     
-    // If it's a FormData object, append cart_token if missing
+    // Append cart_token to FormData if missing and method isn't GET
     if (cartToken && formData instanceof FormData && !formData.has("cart_token")) {
         formData.append("cart_token", cartToken);
     }
@@ -44,21 +62,40 @@ async function sendFormData(formData, url, method) {
     if (spinner) spinner.style.display = "flex";
     
     try {
-        // If it's a GET request, append cart_token as a query parameter
         let requestUrl = url;
-        const options = {
-            method: method.toUpperCase(),
-            headers: { 
-                "Accept": "application/json",
-                ...(cartToken ? { "X-Cart-Token": cartToken } : {}) // Optional custom header support
-            }
+        const headers = {
+            "Accept": "application/json",
+            ...(cartToken ? { "X-Cart-Token": cartToken } : {})
         };
 
-        if (method.toUpperCase() !== "GET") {
+        // Add Laravel CSRF Token for state-changing requests
+        if (uppercaseMethod !== "GET") {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (csrfToken) {
+                headers["X-CSRF-TOKEN"] = csrfToken;
+            }
+        }
+
+        const options = {
+            method: uppercaseMethod,
+            headers: headers
+        };
+
+        if (uppercaseMethod !== "GET") {
             options.body = formData;
-        } else if (cartToken) {
-            const separator = url.includes('?') ? '&' : '?';
-            requestUrl = `${url}${separator}cart_token=${encodeURIComponent(cartToken)}`;
+        } else {
+            // Handle GET request query parameters safely
+            const urlObj = new URL(url, window.location.origin);
+            if (cartToken && !urlObj.searchParams.has('cart_token')) {
+                urlObj.searchParams.append('cart_token', cartToken);
+            }
+            // If formData was passed for a GET request, append its entries to URL search params
+            if (formData instanceof FormData) {
+                for (const [key, value] of formData.entries()) {
+                    urlObj.searchParams.append(key, value);
+                }
+            }
+            requestUrl = urlObj.toString();
         }
 
         const response = await fetch(requestUrl, options);
@@ -66,6 +103,9 @@ async function sendFormData(formData, url, method) {
 
         if (!response.ok) {
             console.error("Server Error:", json);
+            if (json?.message && typeof toast === 'function') {
+                toast(json.message, json.status || 'error');
+            }
             return json;
         }
 
@@ -73,14 +113,18 @@ async function sendFormData(formData, url, method) {
             syncCartState(json);
         }
 
-        if (json.message) {
-            toast(json.message, json.status);
+        if (json?.message && typeof toast === 'function') {
+            toast(json.message, json.status || 'success');
         }
 
         return json;
 
     } catch (error) {
         console.error("Fetch error:", error);
+        if (typeof toast === 'function') {
+            toast("A network or unexpected error occurred.", "error");
+        }
+        return null;
     } finally {
         if (spinner) spinner.style.display = "none";
     }
@@ -110,7 +154,7 @@ async function Processform(event) {
 
     const response = await sendFormData(formData, url, method);
     
-    const cartToken = getCookie('cart_token');
+    const cartToken = getStoredValue('cart_token');
     const el = document.getElementById('cart_icon');
 
     if (!el) return;
@@ -123,13 +167,14 @@ async function Processform(event) {
     if (response && response.count !== undefined && countEl) {
         countEl.textContent = response.count;
     }
+    alert(response);
 }
 
 
 /* --------------------------------------------
    GET COOKIE
 -------------------------------------------- */
-function getCookie(name) {
+function getStoredValue(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) return parts.pop().split(";").shift();

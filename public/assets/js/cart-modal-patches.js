@@ -14,21 +14,34 @@
 function syncCartState(cartData) {
     if (!cartData) return;
 
-    // 1. Extract count and token safely from response variations (nested or flat)
+    // 1. Extract count safely
     const count = cartData.count !== undefined ? parseInt(cartData.count) : null;
+   
     
-    // Check all potential keys your backend might use for the cart token
-    const token = cartData.cart_token 
-               || cartData.cartToken 
-               || cartData.data?.cart_token 
-               || cartData.data?.cartToken;
 
-    // 2. Update Cookie if token is found anywhere in the response
-    if (token) {
+    
+    // 2. Resolve token cleanly (check response payload first, fall back to existing cookies/globals)
+   // 1. Extract the token safely from the payload
+let token = cartData.cart_token || cartData.cartToken || cartData.data?.cart_token || cartData.data?.cartToken;
+
+if (!token) {
+    token = typeof getStoredValue === 'function' ? getStoredValue('cart_token') : window.CART_TOKEN || null;
+}
+
+// 2. Save it using your storage function if a valid token exists
+if (token) {
+    setStoredValue('cart_token', token, 30);
+}
+
+    // 3. Handle Cookie State
+    if (count === 0 || !token) {
+        document.cookie = "cart_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        token = null;
+    } else {
         document.cookie = `cart_token=${token}; path=/; max-age=${30 * 24 * 60 * 60}`;
     }
 
-    // 3. Update LocalStorage & DOM Badge
+    // 4. Update LocalStorage & DOM Badge
     if (count !== null) {
         localStorage.setItem('cart_count', count);
         const countEl = document.getElementById('item_number');
@@ -44,15 +57,14 @@ function syncCartState(cartData) {
         }
     }
 
-    // 4. Update Cart Icon Link href dynamically
+    // 5. Update Cart Icon Link href dynamically
     const cartIcon = document.getElementById('cart_icon');
-    const currentToken = typeof getCookie === 'function' ? getCookie('cart_token') : token;
-    if (cartIcon && cartIcon.dataset.cartUrl && currentToken) {
+    if (cartIcon && cartIcon.dataset.cartUrl && token) {
         const separator = cartIcon.dataset.cartUrl.includes('?') ? '&' : '?';
-        cartIcon.href = `${cartIcon.dataset.cartUrl}${separator}cart_token=${encodeURIComponent(currentToken)}`;
+        cartIcon.href = `${cartIcon.dataset.cartUrl}${separator}cart_token=${encodeURIComponent(token)}`;
     }
 
-    // 5. Update Modal Content if items list exists
+    // 6. Update Modal Content if items list exists
     const items = Array.isArray(cartData.data) ? cartData.data 
                 : Array.isArray(cartData.items) ? cartData.items 
                 : cartData.data?.items;
@@ -62,6 +74,17 @@ function syncCartState(cartData) {
     }
 }
 
+
+function setStoredValue(name, value, days = 30) {
+    const expiryTime = new Date().getTime() + (days * 24 * 60 * 60 * 1000);
+    
+    // Save to localStorage with expiry
+    const itemData = { value: value, expiry: expiryTime };
+    localStorage.setItem(name, JSON.stringify(itemData));
+    
+    // Also set it as a cookie so backend requests pick it up natively
+    document.cookie = `${name}=${value}; path=/; max-age=${days * 24 * 60 * 60}`;
+}
 
 /* --------------------------------------------------------------------------
    GLOBAL CLICK EVENT LISTENER (Continue Shopping & Cart Icon / Lazy Load)
@@ -110,7 +133,8 @@ document.addEventListener('click', async function (evt) {
         }
 
         // 1. Get the token safely
-        const cartToken = typeof getCookie === 'function' ? getCookie('cart_token') : null;
+        const cartToken = typeof getStoredValue === 'function' ? getStoredValue('cart_token') : null;
+        
 
         // 2. Append token to the URL as a query parameter if it exists
         let targetUrl = cartBtn.dataset.cartUrl;
@@ -178,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Fetch fresh cart state silently in the background
-    const cartToken = typeof getCookie === 'function' ? getCookie('cart_token') : null;
+    const cartToken = typeof getStoredValue === 'function' ? getStoredValue('cart_token') : null;
     const el = document.getElementById('cart_icon');
     if (el && cartToken && typeof get_general_data === 'function') {
         const formData = new FormData();
