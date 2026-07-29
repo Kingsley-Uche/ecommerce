@@ -16,7 +16,6 @@ use App\Http\Controllers\V1\OrderController;
 Route::get('/', [WebsiteController::class, 'index'])->name('home');
 Route::post('/', [WebsiteController::class, 'search'])->name('product-search');
 Route::get('/login', [AdminController::class, 'showLoginform'])->name('login');
-Route::post('/payment/initiate', [TransactionController::class, 'initiatePay'])->name('payment.initiate');
 Route::get('/payment/checkout/{cart_token}', [TransactionController::class, 'checkout'])->name('payment.checkout');
 Route::post('/payment/checkout', [TransactionController::class, 'initiatePay'])->name('checkout.submit');
 Route::get('/product/{id}', [WebsiteController::class, 'ViewProduct'])->name('product.show');
