@@ -18,7 +18,7 @@ Route::delete('/cart/clear', [CartController::class, 'clearCart'])->name('api.ca
 Route::post('/cart/size', [CartController::class, 'updateSize'])->name('cart.update.size');
 Route::post('/cart', [CartController::class, 'getCart'])->name('api.cart.get');
 Route::post('/payment/verify', [TransactionController::class, 'verifyPay'])->name('payment.verify');
-
+Route::post('/payment/initiate', [TransactionController::class, 'initiatePay'])->name('payment.initiate');
 
 Route::get('/user', function (Request $request) {
     return $request->user();
