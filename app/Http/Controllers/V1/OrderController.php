@@ -17,7 +17,7 @@ class OrderController extends Controller
                 'delivery_city', 'delivery_address', 'product_id', 'order_status',
                 'payment_status', 'cart_token', 'total_cost', 'total_paid', 'created_at'
             )
-            ->latest()
+            ->latest('created_at')
             ->paginate(25);
 
         return view('admin.dashboard.pages.orders.index', compact('orders'));
