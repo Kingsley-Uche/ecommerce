@@ -14,7 +14,9 @@ use Illuminate\Support\Facades\Validator;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
+use App\Mail\OrderPaidMail;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Http;
 
 class TransactionController extends Controller
 {
@@ -690,6 +692,210 @@ if($userId && $cartToken){
 }
 
 
+// public function verifyPay(Request $request)
+// {
+//     $validator = Validator::make($request->all(), [
+//         'reference' => 'required|string|max:150',
+//     ]);
+
+//     if ($validator->fails()) {
+//         return response()->json([
+//             'status' => 'error',
+//             'errors' => $validator->errors(),
+//         ], 422);
+//     }
+
+//     $reference = trim(strip_tags($request->reference));
+
+//     $curl = curl_init();
+
+//     try {
+
+//         curl_setopt_array($curl, [
+//             CURLOPT_URL => "https://api.paystack.co/transaction/verify/{$reference}",
+//             CURLOPT_RETURNTRANSFER => true,
+//             CURLOPT_TIMEOUT => 30,
+//             CURLOPT_HTTPHEADER => [
+//                 "Authorization: Bearer " . config('services.paystack_secret'),
+//                 "Cache-Control: no-cache",
+//             ],
+//         ]);
+
+//         $response = curl_exec($curl);
+
+//         if (curl_errno($curl)) {
+//             throw new \Exception(curl_error($curl));
+//         }
+
+//         $result = json_decode($response, true);
+
+//         if (
+//             !$result ||
+//             !isset($result['status']) ||
+//             $result['status'] !== true
+//         ) {
+//             throw new \Exception(
+//                 $result['message'] ?? 'Unable to verify transaction.'
+//             );
+//         }
+
+//         $payment = $result['data'];
+
+//         /*
+//         |--------------------------------------------------------------------------
+//         | Verify payment succeeded
+//         |--------------------------------------------------------------------------
+//         */
+
+//         if (
+//             $payment['status'] !== 'success' ||
+//             strtolower($payment['gateway_response']) !== 'successful'
+//         ) {
+
+//             return response()->json([
+//                 'status' => 'error',
+//                 'message' => 'Payment has not been completed.'
+//             ], 400);
+
+//         }
+
+//         DB::beginTransaction();
+
+//         /*
+//         |--------------------------------------------------------------------------
+//         | Lock order
+//         |--------------------------------------------------------------------------
+//         */
+
+//         $order = Orders::where('payment_ref', $reference)->where('payment_status', 'pending')
+//             ->lockForUpdate()
+//             ->first();
+
+//         if (!$order) {
+//             throw new \Exception('Order not found.');
+//         }
+
+//         /*
+//         |--------------------------------------------------------------------------
+//         | Idempotency
+//         |--------------------------------------------------------------------------
+//         */
+
+
+//         /*
+//         |--------------------------------------------------------------------------
+//         | Verify amount
+//         |--------------------------------------------------------------------------
+//         */
+
+//         $paidAmount = round($payment['amount'] / 100, 2);
+
+//         if ((float)$order->total_cost != $paidAmount) {
+
+//             throw new \Exception(
+//                 "Amount mismatch. Expected {$order->total_cost}, received {$paidAmount}"
+//             );
+
+//         }
+
+//         /*
+//         |--------------------------------------------------------------------------
+//         | Verify currency
+//         |--------------------------------------------------------------------------
+//         */
+
+//         if ($payment['currency'] !== 'NGN') {
+
+//             throw new \Exception('Invalid payment currency.');
+
+//         }
+
+//         /*
+//         |--------------------------------------------------------------------------
+//         | Process products
+//         |--------------------------------------------------------------------------
+//         */
+
+//         $items = ProductOrder::where('order_id', $order->id)->get();
+
+//         foreach ($items as $item) {
+
+//             $product = ProductModel::lockForUpdate()->find($item->product_id);
+
+//             if (!$product) {
+//                 throw new \Exception(
+//                     "Product {$item->product_id} not found."
+//                 );
+//             }
+
+//             if ($product->stock < $item->qty_bought) {
+
+//                 throw new \Exception(
+//                     "{$product->name} is out of stock."
+//                 );
+
+//             }
+
+//             $product->decrement(
+//                 'stock',
+//                 $item->qty_bought
+//             );
+
+//             $product->increment(
+//                 'num_sold',
+//                 $item->qty_bought
+//             );
+
+//         }
+
+//         /*
+//         |--------------------------------------------------------------------------
+//         | Update order
+//         |--------------------------------------------------------------------------
+//         */
+
+//         $order->update([
+//             'total_paid' => $paidAmount,
+//             'payment_status' => 'confirmed',
+//             'paid_at' => now(),
+//         ]);
+
+//         /*
+//         |--------------------------------------------------------------------------
+//         | Remove customer's cart
+//         |--------------------------------------------------------------------------
+//         */
+
+//         CartModel::where('cart_token', $order->cart_token)->delete();
+
+//         DB::commit();
+
+//         return response()->json([
+//             'status' => 'success',
+//             'message' => 'Transaction confirmed.',
+//         ]);
+
+//     } catch (\Throwable $e) {
+
+//         DB::rollBack();
+
+//         Log::error('Payment verification failed.', [
+//             'reference' => $reference,
+//             'message' => $e->getMessage(),
+//             'trace' => $e->getTraceAsString(),
+//         ]);
+
+//         return response()->json([
+//             'status' => 'error',
+//             'message' => 'Unable to verify payment.',
+//         ], 500);
+
+//     } finally {
+
+//         curl_close($curl);
+
+//     }
+// }
 public function verifyPay(Request $request)
 {
     $validator = Validator::make($request->all(), [
@@ -705,178 +911,108 @@ public function verifyPay(Request $request)
 
     $reference = trim(strip_tags($request->reference));
 
-    $curl = curl_init();
-
     try {
+        // Optimized HTTP request via Laravel Http Client (Cleaner & faster overhead management)
+        $response = Http::withToken(config('services.paystack_secret'))
+            ->withHeaders(['Cache-Control' => 'no-cache'])
+            ->timeout(30)
+            ->get("https://api.paystack.co/transaction/verify/{$reference}");
 
-        curl_setopt_array($curl, [
-            CURLOPT_URL => "https://api.paystack.co/transaction/verify/{$reference}",
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_HTTPHEADER => [
-                "Authorization: Bearer " . config('services.paystack_secret'),
-                "Cache-Control: no-cache",
-            ],
-        ]);
-
-        $response = curl_exec($curl);
-
-        if (curl_errno($curl)) {
-            throw new \Exception(curl_error($curl));
+        if ($response->failed() || !($response->json('status') === true)) {
+            throw new \Exception($response->json('message') ?? 'Unable to verify transaction.');
         }
 
-        $result = json_decode($response, true);
-
-        if (
-            !$result ||
-            !isset($result['status']) ||
-            $result['status'] !== true
-        ) {
-            throw new \Exception(
-                $result['message'] ?? 'Unable to verify transaction.'
-            );
-        }
-
-        $payment = $result['data'];
-
-        /*
-        |--------------------------------------------------------------------------
-        | Verify payment succeeded
-        |--------------------------------------------------------------------------
-        */
+        $payment = $response->json('data');
 
         if (
             $payment['status'] !== 'success' ||
             strtolower($payment['gateway_response']) !== 'successful'
         ) {
-
             return response()->json([
                 'status' => 'error',
                 'message' => 'Payment has not been completed.'
             ], 400);
-
         }
 
-        DB::beginTransaction();
-
-        /*
-        |--------------------------------------------------------------------------
-        | Lock order
-        |--------------------------------------------------------------------------
-        */
-
-        $order = Orders::where('payment_ref', $reference)->where('payment_status', 'pending')
-            ->lockForUpdate()
-            ->first();
-
-        if (!$order) {
-            throw new \Exception('Order not found.');
+        if ($payment['currency'] !== 'NGN') {
+            throw new \Exception('Invalid payment currency.');
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Idempotency
-        |--------------------------------------------------------------------------
-        */
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Verify amount
-        |--------------------------------------------------------------------------
-        */
 
         $paidAmount = round($payment['amount'] / 100, 2);
 
-        if ((float)$order->total_cost != $paidAmount) {
+        // Execute critical database operations inside a transaction block
+        return DB::transaction(function () use ($reference, $paidAmount, $payment) {
 
-            throw new \Exception(
-                "Amount mismatch. Expected {$order->total_cost}, received {$paidAmount}"
-            );
+            $order = Orders::where('payment_ref', $reference)
+                ->where('payment_status', 'pending')
+                ->lockForUpdate()
+                ->first();
 
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Verify currency
-        |--------------------------------------------------------------------------
-        */
-
-        if ($payment['currency'] !== 'NGN') {
-
-            throw new \Exception('Invalid payment currency.');
-
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Process products
-        |--------------------------------------------------------------------------
-        */
-
-        $items = ProductOrder::where('order_id', $order->id)->get();
-
-        foreach ($items as $item) {
-
-            $product = ProductModel::lockForUpdate()->find($item->product_id);
-
-            if (!$product) {
-                throw new \Exception(
-                    "Product {$item->product_id} not found."
-                );
+            if (!$order) {
+                throw new \Exception('Order not found or already processed.');
             }
 
-            if ($product->stock < $item->qty_bought) {
-
-                throw new \Exception(
-                    "{$product->name} is out of stock."
-                );
-
+            if ((float)$order->total_cost != $paidAmount) {
+                throw new \Exception("Amount mismatch. Expected {$order->total_cost}, received {$paidAmount}");
             }
 
-            $product->decrement(
-                'stock',
-                $item->qty_bought
-            );
+            $items = ProductOrder::where('order_id', $order->id)->get();
+            $productIds = $items->pluck('product_id')->toArray();
 
-            $product->increment(
-                'num_sold',
-                $item->qty_bought
-            );
+            // Bulk lock and fetch all products to eliminate N+1 query overhead inside loops
+            $products = ProductModel::whereIn('id', $productIds)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
 
-        }
+            foreach ($items as $item) {
+                $product = $products->get($item->product_id);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Update order
-        |--------------------------------------------------------------------------
-        */
+                if (!$product) {
+                    throw new \Exception("Product ID {$item->product_id} not found.");
+                }
 
-        $order->update([
-            'total_paid' => $paidAmount,
-            'payment_status' => 'confirmed',
-            'paid_at' => now(),
-        ]);
+                if ($product->stock < $item->qty_bought) {
+                    throw new \Exception("{$product->name} is out of stock.");
+                }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Remove customer's cart
-        |--------------------------------------------------------------------------
-        */
+                // Batch or individual direct attribute modification (Queued for execution)
+                $product->decrement('stock', $item->qty_bought);
+                $product->increment('num_sold', $item->qty_bought);
+            }
 
-        CartModel::where('cart_token', $order->cart_token)->delete();
+            // Update order status
+            $order->update([
+                'total_paid' => $paidAmount,
+                'payment_status' => 'confirmed',
+                'paid_at' => now(),
+            ]);
 
-        DB::commit();
+            // Clear Cart token
+            CartModel::where('cart_token', $order->cart_token)->delete();
+            
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Transaction confirmed.',
-        ]);
+            // Dispatch Email asynchronously (outside blocking scope if queue workers are active)
+            try {
+                $customerEmail = $order->email_address ?? null;
+                if ($customerEmail) {
+                    //Mail::to($customerEmail)->queue(new OrderPaidMail($order));
+                    Mail::to($customerEmail)->send(new OrderPaidMail($order));
+                }
+            } catch (\Throwable $mailEx) {
+                Log::error('Failed to queue order confirmation email.', [
+                    'order_id' => $order->id,
+                    'error' => $mailEx->getMessage()
+                ]);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Transaction confirmed.',
+            ]);
+        });
 
     } catch (\Throwable $e) {
-
-        DB::rollBack();
-
         Log::error('Payment verification failed.', [
             'reference' => $reference,
             'message' => $e->getMessage(),
@@ -885,13 +1021,8 @@ public function verifyPay(Request $request)
 
         return response()->json([
             'status' => 'error',
-            'message' => 'Unable to verify payment.',
+            'message' => $e->getMessage() ?: 'Unable to verify payment.',
         ], 500);
-
-    } finally {
-
-        curl_close($curl);
-
     }
 }
      
