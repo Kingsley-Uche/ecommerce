@@ -13,93 +13,79 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
-      # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
+      ####################################################
+      # Detect changed files
+      ####################################################
+      - name: Detect changes
+        id: changes
+        run: |
+          echo "composer_changed=false" >> $GITHUB_OUTPUT
+          echo "frontend_changed=false" >> $GITHUB_OUTPUT
 
-      # Setup PHP
+          if git diff --name-only HEAD~1 HEAD | grep -q "^composer.lock$"; then
+            echo "composer_changed=true" >> $GITHUB_OUTPUT
+          fi
+
+          if git diff --name-only HEAD~1 HEAD | grep -Eq "^(resources/|public/admin-assets/|public/assets/|package.json|package-lock.json|vite.config.js)"; then
+            echo "frontend_changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      ####################################################
+      # PHP
+      ####################################################
       - name: Setup PHP
+        if: steps.changes.outputs.composer_changed == 'true'
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
-          extensions: mbstring, pdo_mysql, xml, bcmath, fileinfo
+          php-version: "8.5"
+          extensions: mbstring,pdo_mysql,xml,bcmath,fileinfo
 
-
-      # Install Composer dependencies
-      - name: Install Composer dependencies
+      - name: Install Composer Dependencies
+        if: steps.changes.outputs.composer_changed == 'true'
         run: composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 
-
-      # Setup Node
-      - name: Setup Node.js
+      ####################################################
+      # Frontend
+      ####################################################
+      - name: Setup Node
+        if: steps.changes.outputs.frontend_changed == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-
-      # Install npm
-      - name: Install NPM dependencies
+      - name: Install NPM packages
+        if: steps.changes.outputs.frontend_changed == 'true'
         run: npm ci
 
-
-      # Build assets
-      - name: Build frontend assets
+      - name: Build frontend
+        if: steps.changes.outputs.frontend_changed == 'true'
         run: npm run build
 
-
-      # Verify build
-      - name: Verify build output
-        run: ls -la public/build
-
-
-      # Remove old frontend build on server
-      - name: Remove old frontend assets
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          timeout: 60s
-          command_timeout: 2m
-          script: |
-            set -e
-
-            echo "Removing old frontend assets..."
-
-            rm -rf ${{ secrets.DEPLOY_PATH }}/ecommerce/public/admin-assets
-            rm -rf ${{ secrets.DEPLOY_PATH }}/ecommerce/public/assets
-            rm -rf ${{ secrets.DEPLOY_PATH }}/ecommerce/public/build
-
-            mkdir -p ${{ secrets.DEPLOY_PATH }}/ecommerce/public/build
-
-            echo "Old assets removed"
-
-
-      # Upload new Vite build
-      - name: Upload Vite build assets
+      - name: Upload frontend assets
+        if: steps.changes.outputs.frontend_changed == 'true'
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          timeout: 60s
-          command_timeout: 5m
-          source: "public/build/*"
-          target: "${{ secrets.DEPLOY_PATH }}/ecommerce/public/build"
+          source: public/build/*
+          target: ${{ secrets.DEPLOY_PATH }}/ecommerce/public/build
 
-
-      # Deploy Laravel
+      ####################################################
+      # Deploy
+      ####################################################
       - name: Deploy Laravel
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          timeout: 60s
-          command_timeout: 10m
 
           script: |
 
@@ -107,37 +93,39 @@ jobs:
 
             cd ${{ secrets.DEPLOY_PATH }}/ecommerce
 
-
             echo "Cleaning repository..."
             git clean -fd -e .env
-
 
             echo "Updating repository..."
             git fetch origin main
             git reset --hard origin/main
 
+            ##################################################
+            # Composer only if composer.lock changed
+            ##################################################
+            if git diff --name-only HEAD@{1} HEAD | grep -q "^composer.lock$"; then
+                echo "Installing Composer packages..."
+                composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+            else
+                echo "Composer dependencies unchanged."
+            fi
 
-            echo "Installing Composer packages..."
-            composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
-
-
-            echo "Refreshing storage link..."
+            ##################################################
+            # Storage link
+            ##################################################
             rm -rf public/storage
             php artisan storage:link
 
-
-            echo "Optimizing Laravel..."
-
+            ##################################################
+            # Laravel optimization
+            ##################################################
             php artisan optimize:clear
-            php artisan route:clear
             php artisan migrate --force
 
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
-            
 
             chmod -R 775 storage bootstrap/cache
 
-
-            echo "Deployment completed successfully"
+            echo "Deployment completed successfully."
