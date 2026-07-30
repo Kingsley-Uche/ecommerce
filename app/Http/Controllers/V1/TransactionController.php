@@ -996,8 +996,8 @@ public function verifyPay(Request $request)
             try {
                 $customerEmail = $order->email_address ?? null;
                 if ($customerEmail) {
-                    //Mail::to($customerEmail)->queue(new OrderPaidMail($order));
-                    Mail::to($customerEmail)->send(new OrderPaidMail($order));
+                    Mail::to($customerEmail)->queue(new OrderPaidMail($order));
+                    
                 }
             } catch (\Throwable $mailEx) {
                 Log::error('Failed to queue order confirmation email.', [
