@@ -383,8 +383,9 @@ function toast(message, type = "success") {
         success: "bg-success",
         error: "bg-danger",
         warning: "bg-warning text-dark",
-        info: "bg-info text-dark"
-    }[type] || "bg-primary";
+        info: "bg-info text-dark",
+        black: "bg-dark text-white"
+    }[type] || "bg-light text-dark";
 
     const toastHTML = `
         <div id="${id}" class="toast align-items-center text-white ${bg} border-0" role="alert" aria-live="assertive" aria-atomic="true">
